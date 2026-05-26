@@ -756,23 +756,29 @@ const MKT = {
   // ── Twelve Data: quotes ──
   async quotesTD(syms, apiKey){
     try{
-      // Twelve Data free plan: max 8 symbols per request — batch if needed
-      const BATCH=8;
+      // TD free plan allows multiple symbols in one call (comma-separated).
+      // Batch into groups of 55 (well under any hard limit) with a delay between batches.
+      const BATCH=55;
       const result={};
+      const sleep=ms=>new Promise(r=>setTimeout(r,ms));
       for(let i=0;i<syms.length;i+=BATCH){
+        if(i>0) await sleep(1200); // avoid hitting 8 req/min rate limit
         const batch=syms.slice(i,i+BATCH);
         const url=`${CFG.TD_BASE}/quote?symbol=${batch.join(',')}&apikey=${apiKey}`;
-        const r=await fetch(url,{signal:AbortSignal.timeout(12000)});
-        if(!r.ok) continue;
+        const r=await fetch(url,{signal:AbortSignal.timeout(15000)});
+        if(!r.ok){ console.warn('TD HTTP error',r.status); continue; }
         const d=await r.json();
-        // TD returns a single object when 1 sym, or {SYM:{...}, SYM:{...}} for multiple
-        // It may also return {status:'error'} at the top level
-        if(d?.status==='error') continue;
-        // Normalise: if the response has a 'symbol' key it's a single-quote object
-        const items = (d?.symbol) ? {[d.symbol]: d} : d;
+        console.log('[TD raw response batch]', i, d);
+        // Top-level error (bad key, rate limit, etc.)
+        if(d?.status==='error'){ console.warn('TD error:', d.message); continue; }
+        // TD returns a plain quote object when exactly 1 symbol is requested
+        // and a {SYM: quote, SYM: quote} map for multiple symbols
+        const items = (d && typeof d==='object' && d.symbol)
+          ? {[d.symbol]: d}   // single-symbol response
+          : d;                 // multi-symbol map
         for(const [sym,q] of Object.entries(items)){
           if(!q||typeof q!=='object') continue;
-          if(q.status==='error') continue;
+          if(q.status==='error'){ console.warn('TD sym error:',sym,q.message); continue; }
           const price=parseFloat(q.close||q.price||0);
           if(!price) continue;
           result[sym]={
