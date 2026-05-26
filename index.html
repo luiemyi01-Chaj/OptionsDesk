@@ -842,14 +842,15 @@ const MKT = {
   },
 
   // ── Finnhub: options chain ──
+  // NOTE: Finnhub free plan does NOT include /stock/option-chain.
+  // This method is kept for paid plan users; free users fall through to Yahoo.
   async optionsChainFH(sym,key){
     try{
-      // Finnhub options endpoint
       const url=`https://finnhub.io/api/v1/stock/option-chain?symbol=${sym}&token=${key}`;
       const r=await fetch(url,{signal:AbortSignal.timeout(12000)});
       if(!r.ok) return null;
       const d=await r.json();
-      // Finnhub returns {data:[{expirationDate,options:{CALL:[...],PUT:[...]}}], ...}
+      // Free plan returns empty object {} or {data:null}
       if(!d?.data?.length) return null;
       const calls=[]; const puts=[];
       const expiryDates=[];
@@ -924,23 +925,41 @@ const MKT = {
   },
 
   // ── Public: options chain ──
-  // Order: cache → Finnhub → Yahoo CORS
-  async optionsChain(sym,date=null){
+  // Yahoo CORS is primary (free, works reliably).
+  // Finnhub paid plan tried first if key present and no specific date requested.
+  async optionsChain(sym, date=null){
     const cacheKey=`opts_${sym}_${date||'all'}`;
     const cached=CACHE.get(cacheKey);
     if(cached){console.log('[CACHE HIT] options',sym);return cached.value;}
 
     const fhKey=S.settings?.fhKey;
+    // Try Finnhub only if no date filter (full chain load) — paid plan only
     if(fhKey&&!date){
       const res=await this.optionsChainFH(sym,fhKey);
       if(res){CACHE.set(cacheKey,res,CACHE.TTL_OPTIONS);MKT._updateCacheDisplay();return res;}
     }
-    // Yahoo CORS fallback
+
+    // ── Yahoo Finance via CORS proxy (primary for free users) ──
     let url=`${CFG.YF2}/v7/finance/options/${sym}`;
     if(date) url+=`?date=${date}`;
     const d=await this.fetch(url);
     const res=d?.optionChain?.result?.[0]||null;
-    if(res) CACHE.set(cacheKey,res,CACHE.TTL_OPTIONS);
+    if(!res) return null;
+
+    // Normalise: add _expirationStrings (YYYY-MM-DD) alongside Unix timestamps
+    // so the expiry selector can display dates AND pass them back correctly
+    if(res.expirationDates && !res._expirationStrings){
+      res._expirationStrings=res.expirationDates.map(ts=>
+        new Date(ts*1000).toISOString().slice(0,10)
+      );
+    }
+
+    // Inject spot price from cached quotes if chain.quote is missing
+    if(!res.quote && S.quotes[sym]){
+      res.quote = S.quotes[sym];
+    }
+
+    CACHE.set(cacheKey,res,CACHE.TTL_OPTIONS);
     MKT._updateCacheDisplay();
     return res;
   },
@@ -1367,18 +1386,43 @@ const app = {
     container.innerHTML=`<div class="loading-block"><div class="spinner"></div><span>Loading ${sym} options chain…</span></div>`;
     U.$('opt-underlying')?.style&&(U.$('opt-underlying').style.display='none');
 
-    const chain=await MKT.optionsChain(sym);
-    if(!chain){container.innerHTML=`<div class="loading-block"><span style="color:var(--red);">Failed to load options chain. Verify the symbol and try again.</span></div>`;return;}
-    S.optionsRaw[sym]=chain;
+    // Fetch quote for spot price in parallel
+    const [chain, quoteRes] = await Promise.all([
+      MKT.optionsChain(sym),
+      S.quotes[sym] ? Promise.resolve(null) : MKT.quotes([sym]),
+    ]);
+    if(quoteRes) Object.assign(S.quotes, quoteRes);
 
-    // Expiry selector
-    const sel=U.$('opt-expiry');
-    if(sel){
-      sel.innerHTML='<option value="">All expirations</option>'+(chain.expirationDates||[]).map(ts=>`<option value="${ts}">${U.fd(ts)}</option>`).join('');
-      if(chain.expirationDates?.length){sel.value=chain.expirationDates[0];S.curOptExp=chain.expirationDates[0];}
+    if(!chain){
+      container.innerHTML=`<div class="loading-block" style="flex-direction:column;gap:10px;">
+        <span style="color:var(--red);font-weight:600;">⚠ Could not load options chain for ${sym}</span>
+        <div style="font-size:11px;color:var(--muted);line-height:1.7;max-width:480px;text-align:left;">
+          Options data comes from Yahoo Finance via a CORS proxy.<br>
+          Common causes:<br>
+          &nbsp;• Symbol is invalid or not optionable<br>
+          &nbsp;• CORS proxy temporarily blocked — wait 60 seconds and retry<br>
+          &nbsp;• Market is closed and proxy is rate-limited<br><br>
+          <strong style="color:var(--text);">Try:</strong> Click <strong style="color:var(--accent2);">Load Chain</strong> again, or try a different symbol (e.g. SPY, NVDA).
+        </div>
+      </div>`;
+      return;
     }
 
-    // Underlying info
+    // Inject spot price if chain.quote is missing
+    if(!chain.quote) chain.quote = S.quotes[sym] || {};
+    S.optionsRaw[sym]=chain;
+
+    // Expiry selector — use Unix timestamps as values (Yahoo format)
+    const sel=U.$('opt-expiry');
+    if(sel){
+      const dates=chain.expirationDates||[];
+      const labels=chain._expirationStrings||dates.map(ts=>new Date(ts*1000).toISOString().slice(0,10));
+      sel.innerHTML='<option value="">All expirations</option>'+
+        dates.map((ts,i)=>`<option value="${ts}">${U.fd(ts)}${labels[i]?' ('+U.dte(labels[i])+'d)':''}</option>`).join('');
+      if(dates.length){sel.value=dates[0];S.curOptExp=dates[0];}
+    }
+
+    // Underlying info bar
     const q=chain.quote||{};
     const inf=U.$('opt-underlying');
     if(inf){
@@ -1407,7 +1451,8 @@ const app = {
   renderOptionsChain(){
     const sym=S.curOptSym; if(!sym||!S.optionsRaw[sym]) return;
     const chain=S.optionsRaw[sym];
-    const spot=chain.quote?.regularMarketPrice||100;
+    // Spot price: chain.quote first, then S.quotes cache, fallback to 0
+    const spot=(chain.quote?.regularMarketPrice)||(S.quotes[sym]?.regularMarketPrice)||0;
     const opts=chain.options?.[0]||{calls:[],puts:[]};
     const filter=U.$('opt-filter')?.value||'both';
     const strikes=U.$('opt-strikes')?.value||'10';
