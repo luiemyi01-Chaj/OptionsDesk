@@ -484,7 +484,8 @@
         <div style="font-size:12px;font-weight:600;margin-bottom:4px;">📡 Market Data API</div>
         <div style="font-size:10px;color:var(--muted);margin-bottom:10px;line-height:1.6;">
           <strong style="color:var(--text);">Quotes &amp; Charts:</strong> Finnhub — free, 60 calls/min, real-time.<br>
-          <strong style="color:var(--text);">Options Chains:</strong> Market Data App — free, real Greeks, direct API (no proxy). Works from Canada.
+          <strong style="color:var(--text);">Options (primary):</strong> Cloudflare Worker → Yahoo Finance (real-time, full chain).<br>
+          <strong style="color:var(--text);">Options (fallback):</strong> Market Data App — 24hr delayed on free tier, no proxy needed.
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;">
 
@@ -501,13 +502,26 @@
 
           <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
 
+          <!-- Cloudflare Worker -->
+          <div>
+            <span class="label">Cloudflare Worker URL <span style="color:var(--muted);font-weight:400;">(Options — Primary)</span></span>
+            <input id="s-cf-worker" type="text" style="width:100%;" placeholder="https://options-proxy.yourname.workers.dev">
+            <div style="font-size:10px;color:var(--muted);margin-top:3px;line-height:1.6;">
+              Your personal CORS proxy — uses the <strong style="color:var(--text);">new v3 worker script</strong> with cookie+crumb auth.<br>
+              Update your existing worker at <a href="https://dash.cloudflare.com" target="_blank" style="color:var(--accent2);">dash.cloudflare.com</a> with the new <code style="color:var(--cyan);">cloudflare-worker.js</code>.
+            </div>
+          </div>
+          <button class="btn btn-blue" onclick="app.saveCFWorker()">Save &amp; Test Worker</button>
+          <div id="cf-status" style="font-size:11px;color:var(--muted);min-height:14px;"></div>
+
+          <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
+
           <!-- Market Data App -->
           <div>
-            <span class="label">Market Data App Token <span style="color:var(--muted);font-weight:400;">(Options Chains)</span></span>
+            <span class="label">Market Data App Token <span style="color:var(--muted);font-weight:400;">(Options — Fallback)</span></span>
             <input id="s-mda-key" type="password" style="width:100%;" placeholder="your_marketdata_token">
-            <div style="font-size:10px;color:var(--muted);margin-top:3px;line-height:1.7;">
-              Free at <a href="https://dashboard.marketdata.app/marketdata/register" target="_blank" style="color:var(--accent2);">marketdata.app</a> → sign up → Dashboard → copy API token.<br>
-              Free tier: 100 calls/day. Real options data with Greeks. No proxy needed. Works from Canada.
+            <div style="font-size:10px;color:var(--muted);margin-top:3px;">
+              <a href="https://dashboard.marketdata.app/marketdata/register" target="_blank" style="color:var(--accent2);">marketdata.app</a> → free account → copy API token. Used when Worker is unavailable.
             </div>
           </div>
           <button class="btn btn-blue" onclick="app.saveMDAKey()">Save &amp; Test Market Data</button>
@@ -898,16 +912,45 @@ const MKT = {
     }catch(e){console.error('MDA chain error',e);return null;}
   },
 
+  // ── Yahoo Finance via Cloudflare Worker (cookie+crumb auth) ──
+  async _yahooOptions(sym, date, workerUrl){
+    try{
+      let url=`${CFG.YF2}/v7/finance/options/${sym}`;
+      if(date) url+=`?date=${date}`;
+      const proxyUrl=`${workerUrl.replace(/\/+$/,'')}/?url=${encodeURIComponent(url)}`;
+      const r=await fetch(proxyUrl,{signal:AbortSignal.timeout(15000)});
+      if(!r.ok) return null;
+      const text=await r.text();
+      if(!text||text.trim().startsWith('<')) return null;
+      const d=JSON.parse(text);
+      const res=d?.optionChain?.result?.[0]||null;
+      if(!res) return null;
+      if(!res._expirationStrings&&res.expirationDates)
+        res._expirationStrings=res.expirationDates.map(ts=>new Date(ts*1000).toISOString().slice(0,10));
+      if(!res.quote) res.quote=S.quotes[sym]||{};
+      res._src='Yahoo';
+      return res;
+    }catch{return null;}
+  },
+
   // ── Public: options chain ──
-  // Market Data App (direct API, real Greeks, works from Canada) → Finnhub paid fallback
+  // 1. Cloudflare Worker → Yahoo Finance (cookie+crumb, most complete data)
+  // 2. Market Data App (direct API, no proxy, works from Canada — 24hr delayed on free tier)
   async optionsChain(sym, date=null){
     const cacheKey=`opts_${sym}_${date||'all'}`;
     const cached=CACHE.get(cacheKey);
     if(cached){console.log('[CACHE HIT] options',sym);return cached.value;}
 
+    const workerUrl=S.settings?.cfWorkerUrl;
     const mdaToken=S.settings?.mdaKey;
-    const fhKey=S.settings?.fhKey;
 
+    // ── 1. Cloudflare Worker → Yahoo (best data, real-time) ──
+    if(workerUrl){
+      const res=await this._yahooOptions(sym,date,workerUrl);
+      if(res){CACHE.set(cacheKey,res,CACHE.TTL_OPTIONS);MKT._updateCacheDisplay();return res;}
+    }
+
+    // ── 2. Market Data App (24hr delayed on free tier, but works without proxy) ──
     if(mdaToken){
       try{
         if(!S._mdaExpiries) S._mdaExpiries={};
@@ -926,33 +969,10 @@ const MKT = {
               expirationDates:expDates.map(e=>Math.floor(new Date(e).getTime()/1000)),
               _expirationStrings:expDates,options:[chain],
               quote:S.quotes[sym]||{},_src:'MarketData'};
-            CACHE.set(cacheKey,res,CACHE.TTL_OPTIONS);
-            MKT._updateCacheDisplay();
-            return res;
-          }
-        }
-      }catch(e){console.error('MDA options error',e);}
-    }
-
-    // Finnhub paid plan fallback (free tier won't work)
-    if(fhKey&&!date){
-      try{
-        const r=await fetch(`https://finnhub.io/api/v1/stock/option-chain?symbol=${sym}&token=${fhKey}`,{signal:AbortSignal.timeout(12000)});
-        if(r.ok){
-          const d=await r.json();
-          if(d?.data?.length){
-            const calls=[],puts=[],expiryDates=[];
-            for(const exp of d.data){
-              const expDate=exp.expirationDate;
-              if(expDate) expiryDates.push(expDate);
-              for(const c of (exp.options?.CALL||[])) calls.push({contractSymbol:c.contractName||'',strike:c.strike||0,expiration:expDate||'',lastPrice:c.lastPrice||0,bid:c.bid||0,ask:c.ask||0,volume:c.volume||0,openInterest:c.openInterest||0,impliedVolatility:c.impliedVolatility||0,delta:c.delta||0,gamma:c.gamma||0,theta:c.theta||0,vega:c.vega||0,inTheMoney:false,_src:'Finnhub'});
-              for(const p of (exp.options?.PUT||[])) puts.push({contractSymbol:p.contractName||'',strike:p.strike||0,expiration:expDate||'',lastPrice:p.lastPrice||0,bid:p.bid||0,ask:p.ask||0,volume:p.volume||0,openInterest:p.openInterest||0,impliedVolatility:p.impliedVolatility||0,delta:p.delta||0,gamma:p.gamma||0,theta:p.theta||0,vega:p.vega||0,inTheMoney:false,_src:'Finnhub'});
-            }
-            const res={underlyingSymbol:sym,expirationDates:expiryDates.map(e=>Math.floor(new Date(e).getTime()/1000)),_expirationStrings:expiryDates,options:[{calls,puts}],quote:S.quotes[sym]||{},_src:'Finnhub'};
             CACHE.set(cacheKey,res,CACHE.TTL_OPTIONS);MKT._updateCacheDisplay();return res;
           }
         }
-      }catch(e){console.error('FH options error',e);}
+      }catch(e){console.error('MDA options error',e);}
     }
 
     return null;
@@ -1737,6 +1757,7 @@ const app = {
   loadSettings(){
     const s=S.settings;
     if(s.fhKey&&U.$('s-fh-key')) U.$('s-fh-key').value=s.fhKey;
+    if(s.cfWorkerUrl&&U.$('s-cf-worker')) U.$('s-cf-worker').value=s.cfWorkerUrl;
     if(s.mdaKey&&U.$('s-mda-key')) U.$('s-mda-key').value=s.mdaKey;
     if(s.sheetsId&&U.$('s-sheet-id')) U.$('s-sheet-id').value=s.sheetsId;
     if(s.apiKey&&U.$('s-api-key')) U.$('s-api-key').value=s.apiKey;
@@ -1746,6 +1767,39 @@ const app = {
     if(s.maxLoss&&U.$('r-daily-loss')) U.$('r-daily-loss').value=s.maxLoss;
     if(s.defContracts&&U.$('r-contracts')) U.$('r-contracts').value=s.defContracts;
     MKT._updateCacheDisplay();
+  },
+
+  async saveCFWorker(){
+    const workerUrl=(U.$('s-cf-worker')?.value||'').trim().replace(/\/+$/,'');
+    if(!workerUrl){toast('Enter your Cloudflare Worker URL first','warn');return;}
+    S.settings={...S.settings,cfWorkerUrl:workerUrl};
+    DB.s('settings',S.settings);
+    CACHE.clear();
+    const el=U.$('cf-status');
+    if(el){el.textContent='Testing…';el.style.color='var(--muted)';}
+    try{
+      // Test: fetch a small Yahoo Finance quote through the worker
+      const testUrl=`${workerUrl}/?url=${encodeURIComponent('https://query1.finance.yahoo.com/v7/finance/quote?symbols=SPY&fields=regularMarketPrice')}`;
+      const r=await fetch(testUrl,{signal:AbortSignal.timeout(15000)});
+      const text=await r.text();
+      const ok=r.ok&&text.includes('regularMarketPrice');
+      if(el){
+        if(ok){
+          el.textContent='✓ Worker connected — options chain ready!';
+          el.style.color='var(--green)';
+          toast('Cloudflare Worker connected! Options chain will now work.','success');
+        } else {
+          el.textContent='⚠ Worker reachable but Yahoo returned unexpected data — make sure you deployed the v3 script.';
+          el.style.color='var(--yellow)';
+          toast('Worker URL saved. Update the worker script to v3 if options chain fails.','info');
+        }
+      }
+    }catch(e){
+      if(el){
+        el.textContent='⚠ Worker URL saved but could not test it — confirm worker is deployed.';
+        el.style.color='var(--yellow)';
+      }
+    }
   },
 
   async saveMDAKey(){
