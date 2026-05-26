@@ -11,20 +11,20 @@
 
 <style>
   :root {
-    --bg:      #080c14;
-    --surface: #0e1421;
-    --card:    #121a28;
-    --border:  #1e2d42;
-    --border2: #253348;
-    --text:    #c8d8ec;
-    --muted:   #4a6080;
-    --accent:  #2563eb;
-    --accent2: #3b82f6;
-    --green:   #10b981;
-    --red:     #ef4444;
-    --yellow:  #f59e0b;
-    --purple:  #8b5cf6;
-    --cyan:    #06b6d4;
+    --bg:      #0d1117;
+    --surface: #161d2b;
+    --card:    #1e2a3d;
+    --border:  #2e4060;
+    --border2: #3a5070;
+    --text:    #eaf2ff;
+    --muted:   #7a95b8;
+    --accent:  #3b82f6;
+    --accent2: #60a5fa;
+    --green:   #34d399;
+    --red:     #f87171;
+    --yellow:  #fbbf24;
+    --purple:  #a78bfa;
+    --cyan:    #22d3ee;
     --font-mono: 'JetBrains Mono', monospace;
     --font:      'DM Sans', sans-serif;
   }
@@ -596,8 +596,9 @@
 //  CONFIG
 // ────────────────────────────────────────────────────────────
 const CFG = {
-  PROXY1:  'https://corsproxy.io/?',
+  PROXY1:  'https://corsproxy.io/?url=',
   PROXY2:  'https://api.allorigins.win/raw?url=',
+  PROXY3:  'https://api.codetabs.com/v1/proxy?quest=',
   YF1:     'https://query1.finance.yahoo.com',
   YF2:     'https://query2.finance.yahoo.com',
   RFR:     0.053,                          // risk-free rate ~5.3%
@@ -719,11 +720,13 @@ const IND = {
 // ────────────────────────────────────────────────────────────
 const MKT = {
   async fetch(url){
-    for(const proxy of [CFG.PROXY1, CFG.PROXY2]){
+    for(const proxy of [CFG.PROXY1, CFG.PROXY2, CFG.PROXY3]){
       try{
-        const r=await fetch(proxy+encodeURIComponent(url),{signal:AbortSignal.timeout(8000)});
+        const r=await fetch(proxy+encodeURIComponent(url),{signal:AbortSignal.timeout(10000)});
         if(!r.ok) continue;
-        return await r.json();
+        const text = await r.text();
+        if(!text || text.trim().startsWith('<')) continue; // got HTML error page
+        return JSON.parse(text);
       }catch{}
     }
     return null;
@@ -1087,21 +1090,39 @@ const app = {
   },
 
   async refreshAll(){
-    if(!S.watchlist.length){
-      U.$('watchlist-grid').innerHTML=`<div style="grid-column:1/-1;" class="card" style="text-align:center;color:var(--muted);">Add tickers to your watchlist to begin.</div>`;
-      return;
-    }
-    const quotes=await MKT.quotes(S.watchlist);
-    S.quotes=quotes;
     const grid=U.$('watchlist-grid');
-    if(!Object.keys(quotes).length){
-      grid.innerHTML=`<div style="grid-column:1/-1;" class="card"><div style="color:var(--yellow);font-size:12px;margin-bottom:6px;">⚠️ Could not fetch market data</div><div style="font-size:11px;color:var(--muted);">The CORS proxy may be unavailable. Try again in a moment, or check your connection.</div></div>`;
+    if(!S.watchlist.length){
+      grid.innerHTML=`<div style="grid-column:1/-1;" class="card" style="text-align:center;color:var(--muted);">Add tickers to your watchlist to begin.</div>`;
       return;
     }
-    grid.innerHTML=S.watchlist.map(s=>renderWLCard(s,quotes[s])).join('');
+    grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--muted);"><div class="spinner" style="margin:0 auto 12px;"></div><div style="font-size:12px;">Loading market data…</div></div>`;
+    const statusEl=U.$('loading-status');
+    if(statusEl) statusEl.textContent='LOADING';
+
+    // Race the fetch against a 15s timeout so the spinner never hangs forever
+    const quotes = await Promise.race([
+      MKT.quotes(S.watchlist),
+      new Promise(res=>setTimeout(()=>res({}),15000))
+    ]);
+    S.quotes=quotes||{};
+
+    if(statusEl) statusEl.textContent='';
+    if(!Object.keys(S.quotes).length){
+      grid.innerHTML=`<div style="grid-column:1/-1;" class="card">
+        <div style="color:var(--yellow);font-size:13px;font-weight:600;margin-bottom:8px;">⚠️ Market data unavailable</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6;">
+          Could not reach Yahoo Finance via CORS proxy.<br>
+          This is common outside market hours or when the proxy is rate-limited.<br><br>
+          <strong style="color:var(--text);">Try:</strong> Click <strong style="color:var(--accent2);">Refresh</strong> above, or wait a minute and try again.<br>
+          The app's Trade Log and Settings work offline regardless.
+        </div>
+      </div>`;
+      return;
+    }
+    grid.innerHTML=S.watchlist.map(s=>renderWLCard(s,S.quotes[s])).join('');
     renderTradeStats();
     // Alerts
-    const moves=Object.entries(quotes).filter(([,q])=>Math.abs(q?.regularMarketChangePercent||0)>3);
+    const moves=Object.entries(S.quotes).filter(([,q])=>Math.abs(q?.regularMarketChangePercent||0)>3);
     const alertEl=U.$('alerts-panel');
     if(alertEl) alertEl.innerHTML=moves.length
       ?moves.map(([s,q])=>`<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:11px;"><span style="font-family:var(--font-mono);font-weight:700;">${s}</span> — <span class="${U.clr(q.regularMarketChangePercent)}">${q.regularMarketChangePercent>0?'▲':'▼'} ${Math.abs(q.regularMarketChangePercent).toFixed(2)}%</span> <span style="color:var(--muted);">notable move today</span></div>`).join('')
