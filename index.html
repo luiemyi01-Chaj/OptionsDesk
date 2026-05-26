@@ -483,12 +483,45 @@
       <div class="card">
         <div style="font-size:12px;font-weight:600;margin-bottom:4px;">📡 Market Data API</div>
         <div style="font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.5;">
-          Free API key from <a href="https://twelvedata.com" target="_blank" style="color:var(--accent2);">twelvedata.com</a> — 800 calls/day, no credit card needed. Required for live quotes &amp; charts.
+          Hybrid multi-provider market data architecture with automatic fallback.<br><br>
+Primary: Finnhub WebSocket (best free realtime feed)<br>
+Fallbacks: Twelve Data → Yahoo Finance → Polygon<br><br>
+This architecture minimizes API exhaustion by using:
+<ul style="margin-top:6px;margin-left:18px;line-height:1.6;">
+<li>60-second quote cache</li>
+<li>Shared centralized quote state</li>
+<li>WebSocket streaming instead of polling</li>
+<li>Automatic provider failover</li>
+</ul>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <div>
             <span class="label">Twelve Data API Key</span>
             <input id="s-td-key" type="password" style="width:100%;" placeholder="your_api_key_here">
+
+          <div style="margin-top:10px;">
+            <span class="label">Finnhub API Key (Recommended Primary)</span>
+            <input id="s-fh-key" type="password" style="width:100%;" placeholder="finnhub_api_key">
+            <div style="font-size:10px;color:var(--muted);margin-top:4px;">
+              Free plan: 60 calls/minute + realtime WebSocket streaming.
+            </div>
+          </div>
+
+          <div style="margin-top:10px;">
+            <span class="label">Polygon.io API Key (Optional Fallback)</span>
+            <input id="s-polygon-key" type="password" style="width:100%;" placeholder="polygon_api_key">
+          </div>
+
+          <div style="margin-top:10px;">
+            <span class="label">Dashboard Refresh Interval (seconds)</span>
+            <select id="s-refresh-interval" style="width:100%;">
+              <option value="15">15 seconds</option>
+              <option value="30">30 seconds</option>
+              <option value="60" selected>60 seconds (Recommended)</option>
+              <option value="120">120 seconds</option>
+            </select>
+          </div>
+
           </div>
           <button class="btn btn-blue" onclick="app.saveTDKey()">Save &amp; Test</button>
           <div id="td-status" style="font-size:11px;color:var(--muted);"></div>
@@ -622,6 +655,8 @@ const CFG = {
   YF2:     'https://query2.finance.yahoo.com',
   TD_BASE: 'https://api.twelvedata.com',
   POLYGON_BASE: 'https://api.polygon.io',
+  FINNHUB_BASE: 'https://finnhub.io/api/v1',
+  FINNHUB_WS: 'wss://ws.finnhub.io',
   RFR:     0.053,
   DEFAULT_WL: ['NVDA','AMD','GOOGL','SPY','TD','RY','BNS','BMO','CM'],
 };
@@ -640,6 +675,90 @@ const S = {
   curOptSym: null,
   curOptExp: null,
   curTechSym: null,
+};
+
+
+// ────────────────────────────────────────────────────────────
+//  PROVIDER ARCHITECTURE
+// ────────────────────────────────────────────────────────────
+const PROVIDERS = {
+  activeSocket: null,
+
+  getRefreshInterval(){
+    return +(S.settings?.refreshInterval || 60) * 1000;
+  },
+
+  async getQuote(symbol){
+    // 1. Finnhub realtime
+    if(S.settings?.finnhubKey){
+      try{
+        const q = await MKT.quoteFinnhub(symbol, S.settings.finnhubKey);
+        if(q) return q;
+      }catch(e){ console.warn('Finnhub failed', e); }
+    }
+
+    // 2. Twelve Data
+    if(S.settings?.tdKey){
+      try{
+        const q = await MKT.quoteTD(symbol, S.settings.tdKey);
+        if(q) return q;
+      }catch(e){ console.warn('TwelveData failed', e); }
+    }
+
+    // 3. Polygon
+    if(S.settings?.polygonKey){
+      try{
+        const q = await MKT.quotePolygon(symbol, S.settings.polygonKey);
+        if(q) return q;
+      }catch(e){ console.warn('Polygon failed', e); }
+    }
+
+    // 4. Yahoo fallback
+    return await MKT.quoteYahoo(symbol);
+  },
+
+  startFinnhubWebSocket(symbols=[]){
+    if(!S.settings?.finnhubKey || !symbols.length) return;
+
+    try{
+      if(this.activeSocket){
+        this.activeSocket.close();
+      }
+
+      const socket = new WebSocket(`${CFG.FINNHUB_WS}?token=${S.settings.finnhubKey}`);
+
+      socket.onopen = () => {
+        console.log('Finnhub WebSocket connected');
+        symbols.forEach(sym => {
+          socket.send(JSON.stringify({ type:'subscribe', symbol:sym }));
+        });
+      };
+
+      socket.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+
+        if(msg.type === 'trade' && msg.data){
+          msg.data.forEach(trade => {
+            S.quotes[trade.s] = {
+              ...(S.quotes[trade.s] || {}),
+              regularMarketPrice: trade.p,
+              regularMarketTime: trade.t,
+            };
+          });
+
+          if(window.app?.renderWatchlist){
+            window.app.renderWatchlist();
+          }
+        }
+      };
+
+      socket.onerror = err => console.warn('WebSocket error', err);
+
+      this.activeSocket = socket;
+    }catch(e){
+      console.warn('WebSocket init failed', e);
+    }
+  }
 };
 
 // ────────────────────────────────────────────────────────────
@@ -759,6 +878,64 @@ const MKT = {
     }
     return null;
   },
+
+  
+  // ── Finnhub realtime quote ──
+  async quoteFinnhub(sym, apiKey){
+    try{
+      const r = await fetch(`${CFG.FINNHUB_BASE}/quote?symbol=${sym}&token=${apiKey}`);
+      const d = await r.json();
+
+      if(!d || !d.c) return null;
+
+      return {
+        symbol: sym,
+        regularMarketPrice: d.c,
+        regularMarketChange: d.d,
+        regularMarketChangePercent: d.dp,
+      };
+    }catch{
+      return null;
+    }
+  },
+
+  // ── Single symbol Twelve Data ──
+  async quoteTD(sym, apiKey){
+    const data = await this.quotesTD([sym], apiKey);
+    return data?.[sym] || null;
+  },
+
+  // ── Polygon fallback ──
+  async quotePolygon(sym, apiKey){
+    try{
+      const r = await fetch(`${CFG.POLYGON_BASE}/v2/aggs/ticker/${sym}/prev?adjusted=true&apikey=${apiKey}`);
+      const d = await r.json();
+
+      const item = d?.results?.[0];
+      if(!item) return null;
+
+      return {
+        symbol: sym,
+        regularMarketPrice: item.c,
+        regularMarketChange: item.c - item.o,
+        regularMarketChangePercent: ((item.c - item.o) / item.o) * 100,
+      };
+    }catch{
+      return null;
+    }
+  },
+
+  // ── Yahoo final fallback ──
+  async quoteYahoo(sym){
+    try{
+      const url=`${CFG.YF1}/v7/finance/quote?symbols=${sym}`;
+      const d=await this.fetch(url);
+      return d?.quoteResponse?.result?.[0] || null;
+    }catch{
+      return null;
+    }
+  },
+
 
   // ── Twelve Data: quotes ──
   async quotesTD(syms, apiKey){
@@ -1636,5 +1813,30 @@ document.addEventListener('DOMContentLoaded',()=>app.init());
 // Close modals on backdrop click
 document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('open'); }));
 </script>
+
+<div class="card" style="margin:16px;">
+  <div style="font-size:13px;font-weight:600;margin-bottom:10px;">
+    ⚡ Realtime Market Data Architecture
+  </div>
+
+  <div style="font-size:11px;color:var(--muted);line-height:1.8;">
+    <b style="color:var(--text);">Recommended Free Stack:</b><br>
+    • Finnhub = Primary realtime WebSocket feed<br>
+    • Twelve Data = Historical candles and fallback quotes<br>
+    • Yahoo Finance = Emergency fallback<br>
+    • Polygon.io = Optional additional fallback<br><br>
+
+    <b style="color:var(--text);">Important:</b><br>
+    Do NOT refresh the dashboard every few seconds.<br>
+    Use 60-second polling + WebSockets to avoid exhausting free API tiers.<br><br>
+
+    <b style="color:var(--text);">Subscription Requirements:</b><br>
+    • Finnhub free account: NO credit card required<br>
+    • Twelve Data free account: NO credit card required<br>
+    • Yahoo Finance unofficial endpoints: NO account required<br>
+    • Polygon.io free account: signup required, limited realtime usage
+  </div>
+</div>
 </body>
+
 </html>
