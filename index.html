@@ -483,22 +483,73 @@
       <div class="card">
         <div style="font-size:12px;font-weight:600;margin-bottom:4px;">📡 Market Data API</div>
         <div style="font-size:10px;color:var(--muted);margin-bottom:10px;line-height:1.6;">
-          <strong style="color:var(--text);">Primary:</strong> Finnhub — 60 calls/min free, real-time US quotes &amp; charts.<br>
-          <strong style="color:var(--text);">Fallback:</strong> Yahoo Finance (CORS proxy) — no key needed.<br>
-          Cache: quotes 5 min · charts 30 min · options 10 min — minimises API calls.
+          <strong style="color:var(--text);">Quotes &amp; Charts:</strong> Finnhub — free, 60 calls/min, real-time.<br>
+          <strong style="color:var(--text);">Options Chains:</strong> Your personal Cloudflare Worker proxy → public proxies fallback.<br>
+          Cache: quotes 5 min · charts 30 min · options 10 min.
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;">
+
+          <!-- Finnhub -->
           <div>
-            <span class="label">Finnhub API Key <span style="color:var(--muted);font-weight:400;">(Primary — Required)</span></span>
-            <input id="s-fh-key" type="password" style="width:100%;" placeholder="your_finnhub_key_here">
+            <span class="label">Finnhub API Key <span style="color:var(--muted);font-weight:400;">(Quotes &amp; Charts)</span></span>
+            <input id="s-fh-key" type="password" style="width:100%;" placeholder="your_finnhub_key">
+            <div style="font-size:10px;color:var(--muted);margin-top:3px;">
+              <a href="https://finnhub.io/register" target="_blank" style="color:var(--accent2);">finnhub.io/register</a> → free account → copy API key
+            </div>
           </div>
-          <div style="font-size:10px;color:var(--muted);">
-            Get free key: <a href="https://finnhub.io/register" target="_blank" style="color:var(--accent2);">finnhub.io/register</a> → Dashboard → copy API key → paste above. 60 calls/min free, no credit card.
+          <button class="btn btn-blue" onclick="app.saveFHKey()">Save &amp; Test Finnhub</button>
+          <div id="fh-status" style="font-size:11px;color:var(--muted);min-height:14px;"></div>
+
+          <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
+
+          <!-- Cloudflare Worker -->
+          <div>
+            <span class="label">Cloudflare Worker URL <span style="color:var(--muted);font-weight:400;">(Options Chains — Recommended)</span></span>
+            <input id="s-cf-worker" type="text" style="width:100%;" placeholder="https://your-worker.your-name.workers.dev">
+            <div style="font-size:10px;color:var(--muted);margin-top:3px;line-height:1.7;">
+              Your own personal CORS proxy — free, private, no rate limits. Works from Canada.<br>
+              Setup: <strong style="color:var(--text);">5 min</strong> at <a href="https://workers.cloudflare.com" target="_blank" style="color:var(--accent2);">workers.cloudflare.com</a> — see instructions below.
+            </div>
           </div>
+          <button class="btn btn-blue" onclick="app.saveCFWorker()">Save &amp; Test Worker</button>
+          <div id="cf-status" style="font-size:11px;color:var(--muted);min-height:14px;"></div>
+
+          <!-- CF Worker setup instructions -->
+          <details style="font-size:10px;color:var(--muted);line-height:1.8;border:1px solid var(--border);border-radius:6px;padding:8px 10px;">
+            <summary style="cursor:pointer;color:var(--text);font-weight:600;font-size:11px;">📋 Cloudflare Worker Setup (5 min, free)</summary>
+            <div style="margin-top:8px;">
+              <strong style="color:var(--text);">1.</strong> Go to <a href="https://dash.cloudflare.com/sign-up" target="_blank" style="color:var(--accent2);">dash.cloudflare.com/sign-up</a> → free account (no credit card)<br>
+              <strong style="color:var(--text);">2.</strong> Left sidebar → <strong style="color:var(--text);">Workers &amp; Pages</strong> → <strong style="color:var(--text);">Create</strong> → <strong style="color:var(--text);">Create Worker</strong><br>
+              <strong style="color:var(--text);">3.</strong> Click <strong style="color:var(--text);">Edit Code</strong> → delete all existing code → paste this:<br>
+              <pre style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px;margin:6px 0;font-size:10px;overflow-x:auto;white-space:pre;color:var(--text);">export default {
+  async fetch(request) {
+    const url = new URL(request.url);
+    const target = url.searchParams.get('url');
+    if (!target) return new Response('Missing url', {status:400});
+    const res = await fetch(decodeURIComponent(target), {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        'Accept': 'application/json, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+      }
+    });
+    return new Response(res.body, {
+      headers: {
+        'Content-Type': res.headers.get('content-type') || 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      }
+    });
+  }
+}</pre>
+              <strong style="color:var(--text);">4.</strong> Click <strong style="color:var(--text);">Deploy</strong> → copy your worker URL (e.g. <span style="color:var(--accent2);">https://options-proxy.yourname.workers.dev</span>)<br>
+              <strong style="color:var(--text);">5.</strong> Paste the URL in the field above → Save &amp; Test<br><br>
+              Free tier: <strong style="color:var(--text);">100,000 requests/day</strong> — more than enough.
+            </div>
+          </details>
+
+          <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
           <div id="cache-badge" style="font-size:10px;color:var(--cyan);min-height:14px;"></div>
-          <button class="btn btn-blue" onclick="app.saveFHKey()">Save &amp; Test</button>
-          <div id="fh-status" style="font-size:11px;color:var(--muted);"></div>
-          <button class="btn btn-ghost btn-sm" onclick="CACHE.clear();MKT._updateCacheDisplay();toast('Cache cleared — next refresh fetches fresh data','info');" style="margin-top:4px;">🗑 Clear Data Cache</button>
+          <button class="btn btn-ghost btn-sm" onclick="CACHE.clear();MKT._updateCacheDisplay();toast('Cache cleared','info');">🗑 Clear Data Cache</button>
         </div>
       </div>
 
@@ -619,6 +670,7 @@
 //  CONFIG
 // ────────────────────────────────────────────────────────────
 const CFG = {
+  // Public CORS proxies — fallback only (shared, can get rate-limited)
   PROXY1:  'https://corsproxy.io/?url=',
   PROXY2:  'https://api.allorigins.win/raw?url=',
   PROXY3:  'https://api.codetabs.com/v1/proxy?quest=',
@@ -774,9 +826,19 @@ const CACHE = {
 // ────────────────────────────────────────────────────────────
 const MKT = {
 
-  // ── CORS proxy fetch — Yahoo Finance fallback only ──
+  // ── CORS proxy fetch ──
+  // Tries personal Cloudflare Worker first (fast, reliable, no rate limits),
+  // then falls back to shared public proxies.
   async fetch(url){
-    for(const proxy of [CFG.PROXY1,CFG.PROXY2,CFG.PROXY3]){
+    // Build proxy list: personal worker first if configured
+    const personalProxy = S.settings?.cfWorkerUrl
+      ? S.settings.cfWorkerUrl.replace(/\/+$/,'') + '/?url='
+      : null;
+    const proxies = [
+      ...(personalProxy ? [personalProxy] : []),
+      CFG.PROXY1, CFG.PROXY2, CFG.PROXY3,
+    ];
+    for(const proxy of proxies){
       try{
         const r=await fetch(proxy+encodeURIComponent(url),{signal:AbortSignal.timeout(10000)});
         if(!r.ok) continue;
@@ -841,9 +903,7 @@ const MKT = {
     }catch{return null;}
   },
 
-  // ── Finnhub: options chain ──
-  // NOTE: Finnhub free plan does NOT include /stock/option-chain.
-  // This method is kept for paid plan users; free users fall through to Yahoo.
+  // ── Finnhub: options chain (paid plan only — free tier returns empty) ──
   async optionsChainFH(sym,key){
     try{
       const url=`https://finnhub.io/api/v1/stock/option-chain?symbol=${sym}&token=${key}`;
@@ -925,8 +985,7 @@ const MKT = {
   },
 
   // ── Public: options chain ──
-  // Yahoo CORS is primary (free, works reliably).
-  // Finnhub paid plan tried first if key present and no specific date requested.
+  // Personal Cloudflare Worker (fastest, no rate limits) → public CORS proxies → Finnhub paid
   async optionsChain(sym, date=null){
     const cacheKey=`opts_${sym}_${date||'all'}`;
     const cached=CACHE.get(cacheKey);
@@ -1440,11 +1499,16 @@ const app = {
 
   async loadOptionsForExpiry(){
     const sym=S.curOptSym; if(!sym) return;
-    const exp=U.$('opt-expiry')?.value||null;
-    S.curOptExp=exp;
+    const sel=U.$('opt-expiry');
+    const tsVal=sel?.value||null;
+    S.curOptExp=tsVal;
     U.$('opt-chain-container').innerHTML=`<div class="loading-block"><div class="spinner"></div><span>Loading expiry…</span></div>`;
-    const chain=exp?await MKT.optionsChain(sym,exp):S.optionsRaw[sym];
-    if(chain) S.optionsRaw[sym]=chain;
+    // Fetch the selected expiry (passes Unix ts to optionsChain which routes via proxy)
+    const chain=tsVal ? await MKT.optionsChain(sym,tsVal) : S.optionsRaw[sym];
+    if(chain){
+      if(!chain.quote) chain.quote=S.quotes[sym]||{};
+      S.optionsRaw[sym]=chain;
+    }
     this.renderOptionsChain();
   },
 
@@ -1697,92 +1761,4 @@ const app = {
     if(U.$('s-add-ticker')) U.$('s-add-ticker').value='';
   },
 
-  closeModal(id){ U.$(id)?.classList.remove('open'); },
-
-  saveSheetsConfig(){
-    S.settings={...S.settings,sheetsId:U.$('s-sheet-id')?.value?.trim(),apiKey:U.$('s-api-key')?.value?.trim(),clientId:U.$('s-client-id')?.value?.trim()};
-    DB.s('settings',S.settings);
-    if(S.settings.sheetsId&&S.settings.apiKey){
-      GS.read('A1').then(d=>{
-        const el=U.$('sheets-status');
-        if(el){el.textContent=d!==null?'✓ Connected successfully':'✗ Connection failed — check Sheet ID and API key';el.style.color=d!==null?'var(--green)':'var(--red)';}
-      });
-    }
-    toast('Settings saved','success');
-  },
-
-  saveRisk(){
-    S.settings={...S.settings,account:U.$('r-account')?.value,maxPos:U.$('r-position')?.value,maxLoss:U.$('r-daily-loss')?.value,defContracts:U.$('r-contracts')?.value};
-    DB.s('settings',S.settings); toast('Risk settings saved','success');
-  },
-
-  async syncToSheets(){
-    if(!GS.cfg()){toast('Configure Google Sheets first','warn');return;}
-    const ok=await GS.write('Trades!A1',GS.toRows());
-    toast(ok?'Synced to Google Sheets':'Sync requires OAuth token — use JSON export instead',ok?'success':'error');
-  },
-
-  async importFromSheets(){
-    if(!GS.cfg()){toast('Configure Google Sheets first','warn');return;}
-    const rows=await GS.read('Trades!A1:Z9999');
-    if(!rows){toast('Failed to read Google Sheets','error');return;}
-    S.trades=GS.fromRows(rows); DB.s('trades',S.trades);
-    renderTradeRows(); renderTradeStats();
-    toast(`${S.trades.length} trades imported`,'success');
-  },
-
-  resetAll(){
-    if(!confirm('⚠️ Delete ALL trades and settings? This cannot be undone.')) return;
-    localStorage.clear(); S.trades=[]; S.watchlist=[...CFG.DEFAULT_WL]; S.settings={};
-    DB.s('trades',S.trades); DB.s('watchlist',S.watchlist); DB.s('settings',S.settings);
-    renderTradeRows(); renderTradeStats(); renderSettingsWL(); this.refreshAll();
-    toast('All data reset','info');
-  },
-
-  loadSettings(){
-    const s=S.settings;
-    if(s.fhKey&&U.$('s-fh-key')) U.$('s-fh-key').value=s.fhKey;
-    if(s.sheetsId&&U.$('s-sheet-id')) U.$('s-sheet-id').value=s.sheetsId;
-    if(s.apiKey&&U.$('s-api-key')) U.$('s-api-key').value=s.apiKey;
-    if(s.clientId&&U.$('s-client-id')) U.$('s-client-id').value=s.clientId;
-    if(s.account&&U.$('r-account')) U.$('r-account').value=s.account;
-    if(s.maxPos&&U.$('r-position')) U.$('r-position').value=s.maxPos;
-    if(s.maxLoss&&U.$('r-daily-loss')) U.$('r-daily-loss').value=s.maxLoss;
-    if(s.defContracts&&U.$('r-contracts')) U.$('r-contracts').value=s.defContracts;
-    MKT._updateCacheDisplay();
-  },
-
-  async saveFHKey(){
-    const key=(U.$('s-fh-key')?.value||'').trim();
-    if(!key){toast('Enter your Finnhub API key first','warn');return;}
-    S.settings={...S.settings,fhKey:key};
-    DB.s('settings',S.settings);
-    const el=U.$('fh-status');
-    if(el){el.textContent='Testing connection…';el.style.color='var(--muted)';}
-    // Test: fetch a single SPY quote
-    const q=await MKT._fhQuote('SPY',key);
-    if(el){
-      if(q){
-        el.textContent=`✓ Finnhub connected — SPY: $${q.regularMarketPrice?.toFixed(2)||'?'} (${q.regularMarketChangePercent>=0?'+':''}${q.regularMarketChangePercent?.toFixed(2)||'0'}%)`;
-        el.style.color='var(--green)';
-        toast('Finnhub connected! Loading dashboard…','success');
-        CACHE.clear();
-        this.refreshAll();
-      } else {
-        el.textContent='✗ Could not connect — check your key at finnhub.io/dashboard or try again in a moment';
-        el.style.color='var(--red)';
-      }
-    }
-  },
-};
-
-// ────────────────────────────────────────────────────────────
-//  BOOT
-// ────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded',()=>app.init());
-
-// Close modals on backdrop click
-document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('open'); }));
-</script>
-</body>
-</html>
+  closeModal(id){ U
