@@ -479,6 +479,25 @@
         <div style="margin-top:8px;font-size:10px;color:var(--muted);">🇨🇦 Canadian banks: TD · RY · BNS · BMO · CM (US-listed)</div>
       </div>
 
+      <!-- Market Data API -->
+      <div class="card">
+        <div style="font-size:12px;font-weight:600;margin-bottom:4px;">📡 Market Data API</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.5;">
+          Free API key from <a href="https://twelvedata.com" target="_blank" style="color:var(--accent2);">twelvedata.com</a> — 800 calls/day, no credit card needed. Required for live quotes &amp; charts.
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div>
+            <span class="label">Twelve Data API Key</span>
+            <input id="s-td-key" type="password" style="width:100%;" placeholder="your_api_key_here">
+          </div>
+          <button class="btn btn-blue" onclick="app.saveTDKey()">Save &amp; Test</button>
+          <div id="td-status" style="font-size:11px;color:var(--muted);"></div>
+          <div style="font-size:10px;color:var(--muted);line-height:1.6;">
+            <strong style="color:var(--text);">Setup:</strong> Go to <a href="https://twelvedata.com/register" target="_blank" style="color:var(--accent2);">twelvedata.com/register</a> → free account → copy API key → paste above.
+          </div>
+        </div>
+      </div>
+
       <!-- Google Sheets -->
       <div class="card">
         <div style="font-size:12px;font-weight:600;margin-bottom:12px;">📊 Google Sheets Sync</div>
@@ -545,8 +564,8 @@
           Google Cloud Console → Create Project → Enable "Google Sheets API" → Credentials → API Key. For write access, add OAuth 2.0 Client ID.
         </div>
         <div>
-          <div style="color:var(--text);font-weight:600;margin-bottom:4px;">4. Market Data</div>
-          Data is pulled from Yahoo Finance via CORS proxy (corsproxy.io). Free &amp; no API key needed. Options Greeks are calculated via Black-Scholes.
+          <div style="color:var(--text);font-weight:600;margin-bottom:4px;">4. Market Data (Required)</div>
+          Free API key from <a href="https://twelvedata.com/register" target="_blank" style="color:var(--accent2);">twelvedata.com</a> — 800 calls/day, no credit card. Go to Settings → Market Data API → paste key → Save &amp; Test. Options chains use Yahoo Finance as fallback.
         </div>
       </div>
     </div>
@@ -601,7 +620,8 @@ const CFG = {
   PROXY3:  'https://api.codetabs.com/v1/proxy?quest=',
   YF1:     'https://query1.finance.yahoo.com',
   YF2:     'https://query2.finance.yahoo.com',
-  RFR:     0.053,                          // risk-free rate ~5.3%
+  TD_BASE: 'https://api.twelvedata.com',
+  RFR:     0.053,
   DEFAULT_WL: ['NVDA','AMD','GOOGL','SPY','TD','RY','BNS','BMO','CM'],
 };
 
@@ -719,39 +739,108 @@ const IND = {
 //  MARKET DATA
 // ────────────────────────────────────────────────────────────
 const MKT = {
+  // ── CORS proxy fetch (for Yahoo Finance options chain) ──
   async fetch(url){
     for(const proxy of [CFG.PROXY1, CFG.PROXY2, CFG.PROXY3]){
       try{
         const r=await fetch(proxy+encodeURIComponent(url),{signal:AbortSignal.timeout(10000)});
         if(!r.ok) continue;
-        const text = await r.text();
-        if(!text || text.trim().startsWith('<')) continue; // got HTML error page
+        const text=await r.text();
+        if(!text||text.trim().startsWith('<')) continue;
         return JSON.parse(text);
       }catch{}
     }
     return null;
   },
+
+  // ── Twelve Data: quotes ──
+  async quotesTD(syms, apiKey){
+    try{
+      const url=`${CFG.TD_BASE}/quote?symbol=${syms.join(',')}&apikey=${apiKey}`;
+      const r=await fetch(url,{signal:AbortSignal.timeout(10000)});
+      if(!r.ok) return null;
+      const d=await r.json();
+      // Single symbol returns object directly; multiple returns {SYM: {...}}
+      const items = syms.length===1 ? {[syms[0]]:d} : d;
+      const result={};
+      for(const [sym,q] of Object.entries(items)){
+        if(!q||q.status==='error'||!q.close) continue;
+        result[sym]={
+          symbol:sym, shortName:q.name||sym,
+          regularMarketPrice:parseFloat(q.close),
+          regularMarketChange:parseFloat(q.change||0),
+          regularMarketChangePercent:parseFloat(q.percent_change||0),
+          regularMarketVolume:parseInt(q.volume||0),
+          fiftyTwoWeekHigh:parseFloat(q.fifty_two_week?.high||0),
+          fiftyTwoWeekLow:parseFloat(q.fifty_two_week?.low||0),
+        };
+      }
+      return Object.keys(result).length ? result : null;
+    }catch{return null;}
+  },
+
+  // ── Twelve Data: OHLCV history ──
+  async historyTD(sym, outputsize=90, apiKey){
+    try{
+      const url=`${CFG.TD_BASE}/time_series?symbol=${sym}&interval=1day&outputsize=${outputsize}&apikey=${apiKey}`;
+      const r=await fetch(url,{signal:AbortSignal.timeout(12000)});
+      if(!r.ok) return null;
+      const d=await r.json();
+      if(d.status==='error'||!d.values?.length) return null;
+      // Twelve Data returns newest first — reverse to oldest-first
+      const vals=[...d.values].reverse();
+      return{
+        timestamps:vals.map(v=>Math.floor(new Date(v.datetime).getTime()/1000)),
+        closes:vals.map(v=>parseFloat(v.close)),
+        opens:vals.map(v=>parseFloat(v.open)),
+        highs:vals.map(v=>parseFloat(v.high)),
+        lows:vals.map(v=>parseFloat(v.low)),
+        volumes:vals.map(v=>parseInt(v.volume||0)),
+        earningsEvents:[],
+      };
+    }catch{return null;}
+  },
+
+  // ── Public: quotes (TD first, Yahoo fallback) ──
   async quotes(syms){
     if(!syms.length) return {};
+    const tdKey=S.settings?.tdKey;
+    if(tdKey){
+      const res=await this.quotesTD(syms,tdKey);
+      if(res&&Object.keys(res).length) return res;
+    }
+    // Yahoo Finance fallback via CORS proxy
     const url=`${CFG.YF1}/v7/finance/quote?symbols=${syms.join(',')}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketVolume,marketCap,fiftyTwoWeekHigh,fiftyTwoWeekLow,shortName`;
     const d=await this.fetch(url);
     if(!d?.quoteResponse?.result) return {};
     return Object.fromEntries(d.quoteResponse.result.map(q=>[q.symbol,q]));
   },
+
+  // ── Public: options chain (Yahoo only — TD options require paid plan) ──
   async optionsChain(sym,date=null){
     let url=`${CFG.YF2}/v7/finance/options/${sym}`;
     if(date) url+=`?date=${date}`;
     const d=await this.fetch(url);
     return d?.optionChain?.result?.[0]||null;
   },
+
+  // ── Public: price history (TD first, Yahoo fallback) ──
   async history(sym,range='3mo',interval='1d'){
+    const tdKey=S.settings?.tdKey;
+    const sizeMap={'1mo':30,'3mo':90,'6mo':180,'1y':252,'2y':504};
+    if(tdKey){
+      const size=sizeMap[range]||90;
+      const res=await this.historyTD(sym,size,tdKey);
+      if(res) return res;
+    }
+    // Yahoo fallback
     const url=`${CFG.YF1}/v8/finance/chart/${sym}?range=${range}&interval=${interval}&events=earnings`;
     const d=await this.fetch(url);
-    const r=d?.chart?.result?.[0];
-    if(!r) return null;
-    const q=r.indicators?.quote?.[0]||{};
-    const earningsEvents = r.events?.earnings ? Object.values(r.events.earnings) : [];
-    return{timestamps:r.timestamp||[],closes:q.close||[],opens:q.open||[],highs:q.high||[],lows:q.low||[],volumes:q.volume||[],earningsEvents};
+    const result=d?.chart?.result?.[0];
+    if(!result) return null;
+    const q=result.indicators?.quote?.[0]||{};
+    const earningsEvents=result.events?.earnings?Object.values(result.events.earnings):[];
+    return{timestamps:result.timestamp||[],closes:q.close||[],opens:q.open||[],highs:q.high||[],lows:q.low||[],volumes:q.volume||[],earningsEvents};
   },
 };
 
@@ -1466,6 +1555,7 @@ const app = {
 
   loadSettings(){
     const s=S.settings;
+    if(s.tdKey&&U.$('s-td-key')) U.$('s-td-key').value=s.tdKey;
     if(s.sheetsId&&U.$('s-sheet-id')) U.$('s-sheet-id').value=s.sheetsId;
     if(s.apiKey&&U.$('s-api-key')) U.$('s-api-key').value=s.apiKey;
     if(s.clientId&&U.$('s-client-id')) U.$('s-client-id').value=s.clientId;
@@ -1473,6 +1563,28 @@ const app = {
     if(s.maxPos&&U.$('r-position')) U.$('r-position').value=s.maxPos;
     if(s.maxLoss&&U.$('r-daily-loss')) U.$('r-daily-loss').value=s.maxLoss;
     if(s.defContracts&&U.$('r-contracts')) U.$('r-contracts').value=s.defContracts;
+  },
+
+  async saveTDKey(){
+    const key=(U.$('s-td-key')?.value||'').trim();
+    if(!key){toast('Enter an API key first','warn');return;}
+    S.settings={...S.settings,tdKey:key};
+    DB.s('settings',S.settings);
+    const el=U.$('td-status');
+    if(el){el.textContent='Testing…';el.style.color='var(--muted)';}
+    // Test with a single quote
+    const res=await MKT.quotesTD(['SPY'],key);
+    if(el){
+      if(res){
+        el.textContent=`✓ Connected — SPY: $${res.SPY?.regularMarketPrice?.toFixed(2)||'?'}`;
+        el.style.color='var(--green)';
+        toast('Twelve Data connected! Refreshing dashboard…','success');
+        this.refreshAll();
+      } else {
+        el.textContent='✗ Invalid key or rate limit hit. Check your key at twelvedata.com';
+        el.style.color='var(--red)';
+      }
+    }
   },
 };
 
