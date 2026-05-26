@@ -526,7 +526,7 @@ This architecture minimizes API exhaustion by using:
           <button class="btn btn-blue" onclick="app.saveTDKey()">Save &amp; Test</button>
           <div id="td-status" style="font-size:11px;color:var(--muted);"></div>
           <div style="font-size:10px;color:var(--muted);line-height:1.6;">
-            <strong style="color:var(--text);">Setup:</strong> Go to <a href="https://.com/register" target="_blank" style="color:var(--accent2);">.com/register</a> → free account → copy API key → paste above.
+            <strong style="color:var(--text);">Setup:</strong> Go to <a href="https://twelvedata.com/register" target="_blank" style="color:var(--accent2);">.com/register</a> → free account → copy API key → paste above.
           </div>
         </div>
       </div>
@@ -598,7 +598,7 @@ This architecture minimizes API exhaustion by using:
         </div>
         <div>
           <div style="color:var(--text);font-weight:600;margin-bottom:4px;">4. Market Data (Required)</div>
-          Free API key from <a href="https://.com/register" target="_blank" style="color:var(--accent2);">.com</a> — 800 calls/day, no credit card. Go to Settings → Market Data API → paste key → Save &amp; Test. Options chains use Yahoo Finance as fallback.
+          Free API key from <a href="https://twelvedata.com/register" target="_blank" style="color:var(--accent2);">.com</a> — 800 calls/day, no credit card. Go to Settings → Market Data API → paste key → Save &amp; Test. Options chains use Yahoo Finance as fallback.
         </div>
       </div>
     </div>
@@ -644,6 +644,11 @@ This architecture minimizes API exhaustion by using:
 <script>
 'use strict';
 
+window.addEventListener('error', function(e){
+  console.error('Runtime Error:', e.message);
+});
+
+
 // ────────────────────────────────────────────────────────────
 //  CONFIG
 // ────────────────────────────────────────────────────────────
@@ -653,9 +658,10 @@ const CFG = {
   PROXY3:  'https://api.codetabs.com/v1/proxy?quest=',
   YF1:     'https://query1.finance.yahoo.com',
   YF2:     'https://query2.finance.yahoo.com',
-  TD_BASE: 'https://api..com',
+  TD_BASE: 'https://api.twelvedata.com',
   FINNHUB_BASE: 'https://finnhub.io/api/v1',
   FINNHUB_WS: 'wss://ws.finnhub.io',
+  POLYGON_BASE: 'https://api.polygon.io',
   RFR:     0.053,
   DEFAULT_WL: ['NVDA','AMD','GOOGL','SPY','TD','RY','BNS','BMO','CM'],
 };
@@ -697,11 +703,11 @@ const PROVIDERS = {
     }
 
     // 2. 
-    if(){
+    if(S.settings?.tdKey){
       try{
-        const q = await MKT.(symbol, S.settings.tdKey);
+        const q = await MKT.quoteTD(symbol, S.settings.tdKey);
         if(q) return q;
-      }catch(e){ console.warn(' failed', e); }
+      }catch(e){ console.warn('TD failed', e); }
     }
 
     // 3. Polygon
@@ -899,8 +905,8 @@ const MKT = {
   },
 
   // ── Single symbol  ──
-  async (sym, apiKey){
-    const data = await this.([sym], apiKey);
+  async quoteTD(sym, apiKey){
+    const data = await this.quotesTD([sym], apiKey);
     return data?.[sym] || null;
   },
 
@@ -937,7 +943,7 @@ const MKT = {
 
 
   // ── : quotes ──
-  async (syms, apiKey){
+  async quotesTD(syms, apiKey){
     try{
       // TD free plan allows multiple symbols in one call (comma-separated).
       // Batch into groups of 55 (well under any hard limit) with a delay between batches.
@@ -1008,10 +1014,10 @@ const MKT = {
     const cacheKey='quotes_'+syms.slice().sort().join(',');
     const cached=CACHE.get(cacheKey);
     if(cached) return cached;
-    const tdKey=;
+    const tdKey = S.settings?.tdKey;
     const polygonKey=S.settings?.polygonKey;
     if(tdKey){
-      const res=await this.(syms,tdKey);
+      const res=await this.quotesTD(syms,tdKey);
       if(res&&Object.keys(res).length) return CACHE.set(cacheKey,res);
     }
     if(polygonKey){
@@ -1034,10 +1040,10 @@ const MKT = {
 
   // ── Public: price history (TD first, Yahoo fallback) ──
   async history(sym,range='3mo',interval='1d'){
-    const tdKey=;
+    const tdKey = S.settings?.tdKey;
     const polygonKey=S.settings?.polygonKey;
     if(tdKey){
-      const res=await this.(syms,tdKey);
+      const res=await this.quotesTD(syms,tdKey);
       if(res&&Object.keys(res).length) return CACHE.set(cacheKey,res);
     }
     if(polygonKey){
@@ -1416,7 +1422,7 @@ const app = {
                This can happen when: the market is closed &amp; , the free plan rate limit () is hit, or the key has expired.<br><br>
                <strong style="color:var(--text);">Try:</strong> Wait 60 seconds and click <strong style="color:var(--accent2);">Refresh</strong>. If the issue persists, verify your key at <a href="https://.com/account/api-keys" target="_blank" style="color:var(--accent2);">.com</a>.`
             : `No API key configured and Yahoo Finance CORS proxy is unavailable.<br><br>
-               <strong style="color:var(--text);">Fix:</strong> Go to <strong style="color:var(--text);">⚙ Settings</strong> → Market Data API → add a free key from <a href="https://.com/register" target="_blank" style="color:var(--accent2);">.com</a>.`
+               <strong style="color:var(--text);">Fix:</strong> Go to <strong style="color:var(--text);">⚙ Settings</strong> → Market Data API → add a free key from <a href="https://twelvedata.com/register" target="_blank" style="color:var(--accent2);">.com</a>.`
           }
         </div>
       </div>`;
