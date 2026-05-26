@@ -483,12 +483,16 @@
       <div class="card">
         <div style="font-size:12px;font-weight:600;margin-bottom:4px;">📡 Market Data API</div>
         <div style="font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.5;">
-          Free API key from <a href="https://twelvedata.com" target="_blank" style="color:var(--accent2);">twelvedata.com</a> — 800 calls/day, no credit card needed. Required for live quotes &amp; charts.
+          Primary: Twelve Data. Optional fallback: Polygon.io. Free API key from <a href="https://twelvedata.com" target="_blank" style="color:var(--accent2);">twelvedata.com</a> — 800 calls/day, no credit card needed. Required for live quotes &amp; charts.
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <div>
-            <span class="label">Twelve Data API Key</span>
+            <span class="label">Twelve Data API Key (Primary)</span>
             <input id="s-td-key" type="password" style="width:100%;" placeholder="your_api_key_here">
+          </div>
+          <div>
+            <span class="label">Polygon.io API Key (Fallback)</span>
+            <input id="s-polygon-key" type="password" style="width:100%;" placeholder="your_polygon_api_key_here">
           </div>
           <button class="btn btn-blue" onclick="app.saveTDKey()">Save &amp; Test</button>
           <div id="td-status" style="font-size:11px;color:var(--muted);"></div>
@@ -621,6 +625,7 @@ const CFG = {
   YF1:     'https://query1.finance.yahoo.com',
   YF2:     'https://query2.finance.yahoo.com',
   TD_BASE: 'https://api.twelvedata.com',
+  POLYGON_BASE: 'https://api.polygon.io',
   RFR:     0.053,
   DEFAULT_WL: ['NVDA','AMD','GOOGL','SPY','TD','RY','BNS','BMO','CM'],
 };
@@ -638,6 +643,7 @@ const S = {
   curOptSym: null,
   curOptExp: null,
   curTechSym: null,
+  cache: {},
 };
 
 // ────────────────────────────────────────────────────────────
@@ -664,6 +670,17 @@ const U = {
   Npdf: x => Math.exp(-.5*x*x)/Math.sqrt(2*Math.PI),
 };
 
+const CACHE = {
+  ttl: 60000,
+  get(key){
+    const hit=S.cache[key];
+    if(hit && Date.now()-hit.ts < this.ttl) return hit.data;
+    return null;
+  },
+  set(key,data){ S.cache[key]={ts:Date.now(),data}; return data; }
+};
+
+// ────────────────────────────────────────────────────────────
 // ────────────────────────────────────────────────────────────
 //  BLACK-SCHOLES
 // ────────────────────────────────────────────────────────────
@@ -820,23 +837,37 @@ const MKT = {
   },
 
   // ── Public: quotes (TD first, Yahoo fallback) ──
-  async quotes(syms){
-    if(!syms.length) return {};
-    const tdKey=S.settings?.tdKey;
-    console.log('[OptionsDesk] quotes() called. TD key present:', !!tdKey, '| Symbols:', syms);
-    if(tdKey){
-      const res=await this.quotesTD(syms,tdKey);
-      console.log('[OptionsDesk] TD result:', res);
-      if(res&&Object.keys(res).length) return res;
-    }
-    // Yahoo Finance fallback via CORS proxy
-    const url=`${CFG.YF1}/v7/finance/quote?symbols=${syms.join(',')}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketVolume,marketCap,fiftyTwoWeekHigh,fiftyTwoWeekLow,shortName`;
-    const d=await this.fetch(url);
-    if(!d?.quoteResponse?.result) return {};
-    return Object.fromEntries(d.quoteResponse.result.map(q=>[q.symbol,q]));
+  async quotesPolygon(syms, apiKey){
+    try{
+      const out={};
+      for(const sym of syms){
+        const r=await fetch(`${CFG.POLYGON_BASE}/v2/aggs/ticker/${sym}/prev?adjusted=true&apikey=${apiKey}`,{signal:AbortSignal.timeout(10000)});
+        if(!r.ok) continue;
+        const d=await r.json();
+        const bar=d?.results?.[0];
+        if(!bar) continue;
+        out[sym]={symbol:sym,shortName:sym,regularMarketPrice:bar.c,regularMarketChange:bar.c-bar.o,regularMarketChangePercent:((bar.c-bar.o)/bar.o)*100,regularMarketVolume:bar.v};
+      }
+      return Object.keys(out).length?out:null;
+    }catch{return null;}
   },
 
-  // ── Public: options chain (Yahoo only — TD options require paid plan) ──
+  async quotes(syms){
+    if(!syms.length) return {};
+    const cacheKey=`quotes:${syms.sort().join(',')}`;
+    const cached=CACHE.get(cacheKey);
+    if(cached) return cached;
+    const tdKey=S.settings?.tdKey;
+    if(tdKey){
+      const res=await this.quotesTD(syms,tdKey);
+      if(res&&Object.keys(res).length) return CACHE.set(cacheKey,res);
+    }
+    const polyKey=S.settings?.polygonKey;
+    if(polyKey){
+      const res=await this.quotesPolygon(syms,polyKey);
+      if(res&&Object.keys(res).length) return CACHE.set(cacheKey,res);
+    }
+// ── Public: options chain (Yahoo only — TD options require paid plan) ──
   async optionsChain(sym,date=null){
     let url=`${CFG.YF2}/v7/finance/options/${sym}`;
     if(date) url+=`?date=${date}`;
@@ -1580,6 +1611,7 @@ const app = {
   loadSettings(){
     const s=S.settings;
     if(s.tdKey&&U.$('s-td-key')) U.$('s-td-key').value=s.tdKey;
+    if(s.polygonKey&&U.$('s-polygon-key')) U.$('s-polygon-key').value=s.polygonKey;
     if(s.sheetsId&&U.$('s-sheet-id')) U.$('s-sheet-id').value=s.sheetsId;
     if(s.apiKey&&U.$('s-api-key')) U.$('s-api-key').value=s.apiKey;
     if(s.clientId&&U.$('s-client-id')) U.$('s-client-id').value=s.clientId;
@@ -1591,8 +1623,9 @@ const app = {
 
   async saveTDKey(){
     const key=(U.$('s-td-key')?.value||'').trim();
+    const polygonKey=(U.$('s-polygon-key')?.value||'').trim();
     if(!key){toast('Enter an API key first','warn');return;}
-    S.settings={...S.settings,tdKey:key};
+    S.settings={...S.settings,tdKey:key, ...(polygonKey?{polygonKey}:{} )};
     DB.s('settings',S.settings);
     const el=U.$('td-status');
     if(el){el.textContent='Testing…';el.style.color='var(--muted)';}
