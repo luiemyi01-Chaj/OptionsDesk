@@ -829,16 +829,18 @@ const MKT = {
     }catch{return null;}
   },
 
-  // ── Finnhub: batch quotes (one call per symbol — 60/min limit) ──
+  // ── Finnhub: quotes — sequential with 350ms gap to respect 60/min limit ──
   async quotesFH(syms,key){
-    // Finnhub free has no batch endpoint; fetch in parallel with a small stagger
-    const STAGGER=120; // ms between launches to stay under burst limit
     const results={};
-    await Promise.all(syms.map((sym,i)=>new Promise(res=>setTimeout(async()=>{
-      const q=await this._fhQuote(sym,key);
-      if(q) results[sym]=q;
-      res();
-    },i*STAGGER))));
+    for(const sym of syms){
+      try{
+        const q=await this._fhQuote(sym,key);
+        if(q) results[sym]=q;
+      }catch{}
+      // 350ms gap = max ~170 calls/min safely under the 60/min free limit
+      // (we have 12 symbols so total ~4.2s which is acceptable)
+      await new Promise(r=>setTimeout(r,350));
+    }
     return Object.keys(results).length ? results : null;
   },
 
@@ -1332,37 +1334,33 @@ const app = {
       grid.innerHTML=`<div style="grid-column:1/-1;" class="card" style="text-align:center;color:var(--muted);">Add tickers to your watchlist to begin.</div>`;
       return;
     }
-    grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--muted);"><div class="spinner" style="margin:0 auto 12px;"></div><div style="font-size:12px;">Loading market data…</div></div>`;
-    const statusEl=U.$('loading-status');
-    if(statusEl) statusEl.textContent='LOADING';
-
-    // Race the fetch against a 15s timeout so the spinner never hangs forever
-    const quotes = await Promise.race([
-      MKT.quotes(S.watchlist),
-      new Promise(res=>setTimeout(()=>res({}),15000))
-    ]);
-    S.quotes=quotes||{};
-
-    if(statusEl) statusEl.textContent='';
-    if(!Object.keys(S.quotes).length){
-      const hasFH=!!(S.settings?.fhKey);
-      grid.innerHTML=`<div style="grid-column:1/-1;" class="card">
-        <div style="color:var(--yellow);font-size:13px;font-weight:600;margin-bottom:8px;">⚠️ Market data unavailable</div>
-        <div style="font-size:12px;color:var(--muted);line-height:1.6;">
-          ${hasFH
-            ? `Finnhub API key is saved but returned no data.<br>
-               This can happen when: the market is closed and Finnhub returns null, the free plan rate limit (60 calls/min) was briefly hit, or the key has expired.<br><br>
-               <strong style="color:var(--text);">Try:</strong> Wait 60 seconds and click <strong style="color:var(--accent2);">Refresh</strong>. If the issue persists, verify your key at <a href="https://finnhub.io/dashboard" target="_blank" style="color:var(--accent2);">finnhub.io/dashboard</a>.`
-            : `No Finnhub API key configured and Yahoo Finance CORS proxy is unavailable.<br><br>
-               <strong style="color:var(--text);">Fix:</strong> Go to <strong style="color:var(--text);">⚙ Settings</strong> → Market Data API → add your free key from <a href="https://finnhub.io/register" target="_blank" style="color:var(--accent2);">finnhub.io/register</a> (60 calls/min, no credit card).`
-          }
-        </div>
-      </div>`;
+    const fhKey=S.settings?.fhKey;
+    if(!fhKey){
+      grid.innerHTML=`<div style="grid-column:1/-1;" class="card"><div style="color:var(--yellow);font-size:13px;font-weight:600;margin-bottom:8px;">⚠️ No API key configured</div><div style="font-size:12px;color:var(--muted);">Go to <strong style="color:var(--text);">⚙ Settings</strong> → Finnhub API Key → paste your key → Save &amp; Test.</div></div>`;
       return;
     }
-    grid.innerHTML=S.watchlist.map(s=>renderWLCard(s,S.quotes[s])).join('');
+
+    // Show placeholder cards immediately so page doesn't look empty
+    grid.innerHTML=S.watchlist.map(sym=>`
+      <div class="wl-card" id="card-${sym}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+          <div><div style="font-family:var(--font-mono);font-size:13px;font-weight:700;">${sym}</div></div>
+          <button onclick="event.stopPropagation();app.removeTicker('${sym}')" style="color:var(--muted);background:none;border:none;cursor:pointer;font-size:12px;padding:2px 4px;">✕</button>
+        </div>
+        <div style="color:var(--muted);font-size:11px;padding:8px 0;display:flex;align-items:center;gap:6px;"><div class="spinner" style="width:12px;height:12px;border-width:2px;"></div> Loading…</div>
+      </div>`).join('');
+
+    // Fetch and render each symbol as it arrives
+    for(const sym of S.watchlist){
+      const q=await MKT._fhQuote(sym,fhKey);
+      if(q) S.quotes[sym]=q;
+      const card=document.getElementById(`card-${sym}`);
+      if(card) card.outerHTML=renderWLCard(sym, S.quotes[sym]);
+      await new Promise(r=>setTimeout(r,350)); // 350ms gap — stays well under 60/min
+    }
+
     renderTradeStats();
-    // Alerts
+    MKT._updateCacheDisplay();
     const moves=Object.entries(S.quotes).filter(([,q])=>Math.abs(q?.regularMarketChangePercent||0)>3);
     const alertEl=U.$('alerts-panel');
     if(alertEl) alertEl.innerHTML=moves.length
