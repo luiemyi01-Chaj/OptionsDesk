@@ -833,8 +833,13 @@ const MKT = {
     const cached=CACHE.get(cacheKey);
     if(cached) return cached;
     const tdKey=S.settings?.tdKey;
+    const polygonKey=S.settings?.polygonKey;
     if(tdKey){
       const res=await this.quotesTD(syms,tdKey);
+      if(res&&Object.keys(res).length) return CACHE.set(cacheKey,res);
+    }
+    if(polygonKey){
+      const res=await this.quotesPolygon(syms,polygonKey);
       if(res&&Object.keys(res).length) return CACHE.set(cacheKey,res);
     }
     const url=`${CFG.YF1}/v7/finance/quote?symbols=${syms.join(',')}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketVolume,marketCap,fiftyTwoWeekHigh,fiftyTwoWeekLow,shortName`;
@@ -854,13 +859,15 @@ const MKT = {
   // ── Public: price history (TD first, Yahoo fallback) ──
   async history(sym,range='3mo',interval='1d'){
     const tdKey=S.settings?.tdKey;
-    const sizeMap={'1mo':30,'3mo':90,'6mo':180,'1y':252,'2y':504};
+    const polygonKey=S.settings?.polygonKey;
     if(tdKey){
-      const size=sizeMap[range]||90;
-      const res=await this.historyTD(sym,size,tdKey);
-      if(res) return res;
+      const res=await this.quotesTD(syms,tdKey);
+      if(res&&Object.keys(res).length) return CACHE.set(cacheKey,res);
     }
-    // Yahoo fallback
+    if(polygonKey){
+      const res=await this.quotesPolygon(syms,polygonKey);
+      if(res&&Object.keys(res).length) return CACHE.set(cacheKey,res);
+    }
     const url=`${CFG.YF1}/v8/finance/chart/${sym}?range=${range}&interval=${interval}&events=earnings`;
     const d=await this.fetch(url);
     const result=d?.chart?.result?.[0];
@@ -1599,7 +1606,9 @@ const app = {
   async saveTDKey(){
     const key=(U.$('s-td-key')?.value||'').trim();
     if(!key){toast('Enter an API key first','warn');return;}
-    S.settings={...S.settings,tdKey:key};
+    S.settings={...S.settings,polygonKey:
+        localStorage.getItem("polygonKey") || "",
+        tdKey:key};
     DB.s('settings',S.settings);
     const el=U.$('td-status');
     if(el){el.textContent='Testing…';el.style.color='var(--muted)';}
