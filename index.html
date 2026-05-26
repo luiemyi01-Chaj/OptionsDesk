@@ -598,7 +598,7 @@ This architecture minimizes API exhaustion by using:
         </div>
         <div>
           <div style="color:var(--text);font-weight:600;margin-bottom:4px;">4. Market Data (Required)</div>
-          Free API key from <a href="https://twelvedata.com/register" target="_blank" style="color:var(--accent2);">.com</a> — 800 calls/day, no credit card. Go to Settings → Market Data API → paste key → Save &amp; Test. Options chains use Yahoo Finance as fallback.
+          Create a free Finnhub account and paste your API key into Settings → Market Data API. Yahoo Finance is used as a fallback for options and historical data.
         </div>
       </div>
     </div>
@@ -658,10 +658,8 @@ const CFG = {
   PROXY3:  'https://api.codetabs.com/v1/proxy?quest=',
   YF1:     'https://query1.finance.yahoo.com',
   YF2:     'https://query2.finance.yahoo.com',
-  TD_BASE: 'https://api.twelvedata.com',
-  FINNHUB_BASE: 'https://finnhub.io/api/v1',
+    FINNHUB_BASE: 'https://finnhub.io/api/v1',
   FINNHUB_WS: 'wss://ws.finnhub.io',
-  POLYGON_BASE: 'https://api.polygon.io',
   RFR:     0.053,
   DEFAULT_WL: ['NVDA','AMD','GOOGL','SPY','TD','RY','BNS','BMO','CM'],
 };
@@ -718,7 +716,7 @@ const PROVIDERS = {
       }catch(e){ console.warn('Polygon failed', e); }
     }
 
-    // 4. Yahoo fallback
+    // 2. Yahoo fallback
     return await MKT.quoteYahoo(symbol);
   },
 
@@ -1014,17 +1012,7 @@ const MKT = {
     const cacheKey='quotes_'+syms.slice().sort().join(',');
     const cached=CACHE.get(cacheKey);
     if(cached) return cached;
-    const tdKey = S.settings?.tdKey;
-    const polygonKey=S.settings?.polygonKey;
-    if(tdKey){
-      const res=await this.quotesTD(syms,tdKey);
-      if(res&&Object.keys(res).length) return CACHE.set(cacheKey,res);
-    }
-    if(polygonKey){
-      const res=await this.quotesPolygon(syms,polygonKey);
-      if(res&&Object.keys(res).length) return CACHE.set(cacheKey,res);
-    }
-    const url=`${CFG.YF1}/v7/finance/quote?symbols=${syms.join(',')}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketVolume,marketCap,fiftyTwoWeekHigh,fiftyTwoWeekLow,shortName`;
+        const url=`${CFG.YF1}/v7/finance/quote?symbols=${syms.join(',')}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketVolume,marketCap,fiftyTwoWeekHigh,fiftyTwoWeekLow,shortName`;
     const d=await this.fetch(url);
     const yf=d?.quoteResponse?.result?Object.fromEntries(d.quoteResponse.result.map(q=>[q.symbol,q])):{};
     return CACHE.set(cacheKey,yf);
@@ -1040,17 +1028,7 @@ const MKT = {
 
   // ── Public: price history (TD first, Yahoo fallback) ──
   async history(sym,range='3mo',interval='1d'){
-    const tdKey = S.settings?.tdKey;
-    const polygonKey=S.settings?.polygonKey;
-    if(tdKey){
-      const res=await this.quotesTD(syms,tdKey);
-      if(res&&Object.keys(res).length) return CACHE.set(cacheKey,res);
-    }
-    if(polygonKey){
-      const res=await this.quotesPolygon(syms,polygonKey);
-      if(res&&Object.keys(res).length) return CACHE.set(cacheKey,res);
-    }
-    const url=`${CFG.YF1}/v8/finance/chart/${sym}?range=${range}&interval=${interval}&events=earnings`;
+        const url=`${CFG.YF1}/v8/finance/chart/${sym}?range=${range}&interval=${interval}&events=earnings`;
     const d=await this.fetch(url);
     const result=d?.chart?.result?.[0];
     if(!result) return null;
