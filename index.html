@@ -4,74 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OptionsDesk — Trading Research Platform</title>
-<script src="https://cdn.tailwindcss.com">
-app.saveFinnhubKey = function(){
-  const keyField = document.getElementById('s-fh-key');
-  if(!keyField) return;
-
-  const key = keyField.value.trim();
-
-  S.settings = S.settings || {};
-  S.settings.finnhubKey = key;
-
-  localStorage.setItem('od_settings', JSON.stringify(S.settings));
-
-  const status = document.getElementById('td-status');
-  if(status){
-    status.innerHTML = key
-      ? 'Finnhub API key saved.'
-      : 'Enter a Finnhub API key.';
-  }
-
-  toast('Finnhub settings saved','success');
-};
-
-
-document.addEventListener('DOMContentLoaded', () => {
-  try{
-    const settings = JSON.parse(localStorage.getItem('od_settings') || '{}');
-    const fh = document.getElementById('s-fh-key');
-    if(fh && settings.finnhubKey){
-      fh.value = settings.finnhubKey;
-    }
-  }catch(e){}
-});
-
-</script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
-app.saveFinnhubKey = function(){
-  const keyField = document.getElementById('s-fh-key');
-  if(!keyField) return;
-
-  const key = keyField.value.trim();
-
-  S.settings = S.settings || {};
-  S.settings.finnhubKey = key;
-
-  localStorage.setItem('od_settings', JSON.stringify(S.settings));
-
-  const status = document.getElementById('td-status');
-  if(status){
-    status.innerHTML = key
-      ? 'Finnhub API key saved.'
-      : 'Enter a Finnhub API key.';
-  }
-
-  toast('Finnhub settings saved','success');
-};
-
-
-document.addEventListener('DOMContentLoaded', () => {
-  try{
-    const settings = JSON.parse(localStorage.getItem('od_settings') || '{}');
-    const fh = document.getElementById('s-fh-key');
-    if(fh && settings.finnhubKey){
-      fh.value = settings.finnhubKey;
-    }
-  }catch(e){}
-});
-
-</script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 
@@ -548,49 +482,23 @@ document.addEventListener('DOMContentLoaded', () => {
       <!-- Market Data API -->
       <div class="card">
         <div style="font-size:12px;font-weight:600;margin-bottom:4px;">📡 Market Data API</div>
-        <div style="font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.5;">
-          Finnhub realtime market data with Yahoo Finance fallback.<br><br>
-Primary: Finnhub WebSocket realtime streaming<br>
-Fallback: Yahoo Finance<br><br>
-This architecture minimizes API exhaustion by using:
-<ul style="margin-top:6px;margin-left:18px;line-height:1.6;">
-<li>60-second quote cache</li>
-<li>Shared centralized quote state</li>
-<li>WebSocket streaming instead of polling</li>
-<li>Yahoo Finance backup fallback</li>
-</ul>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:10px;line-height:1.6;">
+          <strong style="color:var(--text);">Primary:</strong> Finnhub — 60 calls/min free, real-time US quotes &amp; charts.<br>
+          <strong style="color:var(--text);">Fallback:</strong> Yahoo Finance (CORS proxy) — no key needed.<br>
+          Cache: quotes 5 min · charts 30 min · options 10 min — minimises API calls.
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <div>
-            <span class="label"> API Key</span>
-            <input id="s-td-key" type="password" style="width:100%;" placeholder="your_api_key_here">
-
-          <div style="margin-top:10px;">
-            <span class="label">Finnhub API Key (Recommended Primary)</span>
-            <input id="s-fh-key" type="password" style="width:100%;" placeholder="finnhub_api_key" oninput="app.saveFinnhubKey()">
-            <div style="font-size:10px;color:var(--muted);margin-top:4px;">
-              Free plan: 60 calls/minute + realtime WebSocket streaming.
-            </div>
+            <span class="label">Finnhub API Key <span style="color:var(--muted);font-weight:400;">(Primary — Required)</span></span>
+            <input id="s-fh-key" type="password" style="width:100%;" placeholder="your_finnhub_key_here">
           </div>
-
-          
-
-          <div style="margin-top:10px;">
-            <span class="label">Dashboard Refresh Interval (seconds)</span>
-            <select id="s-refresh-interval" style="width:100%;">
-              <option value="15">15 seconds</option>
-              <option value="30">30 seconds</option>
-              <option value="60" selected>60 seconds (Recommended)</option>
-              <option value="120">120 seconds</option>
-            </select>
+          <div style="font-size:10px;color:var(--muted);">
+            Get free key: <a href="https://finnhub.io/register" target="_blank" style="color:var(--accent2);">finnhub.io/register</a> → Dashboard → copy API key → paste above. 60 calls/min free, no credit card.
           </div>
-
-          </div>
-          <button class="btn btn-blue" onclick="app.saveFinnhubKey()">Save &amp; Test</button>
-          <div id="td-status" style="font-size:11px;color:var(--muted);"></div>
-          <div style="font-size:10px;color:var(--muted);line-height:1.6;">
-            <strong style="color:var(--text);">Setup:</strong> Go to <a href="https://finnhub.io/register" target="_blank" style="color:var(--accent2);">.com/register</a> → free account → copy API key → paste above.
-          </div>
+          <div id="cache-badge" style="font-size:10px;color:var(--cyan);min-height:14px;"></div>
+          <button class="btn btn-blue" onclick="app.saveFHKey()">Save &amp; Test</button>
+          <div id="fh-status" style="font-size:11px;color:var(--muted);"></div>
+          <button class="btn btn-ghost btn-sm" onclick="CACHE.clear();MKT._updateCacheDisplay();toast('Cache cleared — next refresh fetches fresh data','info');" style="margin-top:4px;">🗑 Clear Data Cache</button>
         </div>
       </div>
 
@@ -661,7 +569,7 @@ This architecture minimizes API exhaustion by using:
         </div>
         <div>
           <div style="color:var(--text);font-weight:600;margin-bottom:4px;">4. Market Data (Required)</div>
-          Finnhub is now the only realtime market data provider. Enter your Finnhub API key in Settings to enable live streaming quotes.
+          Free API key from <a href="https://twelvedata.com/register" target="_blank" style="color:var(--accent2);">twelvedata.com</a> — 800 calls/day, no credit card. Go to Settings → Market Data API → paste key → Save &amp; Test. Options chains use Yahoo Finance as fallback.
         </div>
       </div>
     </div>
@@ -707,11 +615,6 @@ This architecture minimizes API exhaustion by using:
 <script>
 'use strict';
 
-window.addEventListener('error', function(e){
-  console.error('Runtime Error:', e.message);
-});
-
-
 // ────────────────────────────────────────────────────────────
 //  CONFIG
 // ────────────────────────────────────────────────────────────
@@ -721,8 +624,6 @@ const CFG = {
   PROXY3:  'https://api.codetabs.com/v1/proxy?quest=',
   YF1:     'https://query1.finance.yahoo.com',
   YF2:     'https://query2.finance.yahoo.com',
-  FINNHUB_BASE: 'https://finnhub.io/api/v1',
-  FINNHUB_WS: 'wss://ws.finnhub.io',
   RFR:     0.053,
   DEFAULT_WL: ['NVDA','AMD','GOOGL','SPY','TD','RY','BNS','BMO','CM'],
 };
@@ -731,7 +632,6 @@ const CFG = {
 //  STATE
 // ────────────────────────────────────────────────────────────
 const S = {
-  cache: {},
   watchlist: [],
   quotes: {},
   optionsRaw: {},      // symbol -> raw chain
@@ -741,76 +641,6 @@ const S = {
   curOptSym: null,
   curOptExp: null,
   curTechSym: null,
-};
-
-
-// ────────────────────────────────────────────────────────────
-//  PROVIDER ARCHITECTURE
-// ────────────────────────────────────────────────────────────
-const PROVIDERS = {
-  activeSocket: null,
-
-  getRefreshInterval(){
-    return +(S.settings?.refreshInterval || 60) * 1000;
-  },
-
-  
-async getQuote(symbol){
-    if(S.settings?.finnhubKey){
-      try{
-        const q = await MKT.quoteFinnhub(symbol, S.settings.finnhubKey);
-        if(q) return q;
-      }catch(e){
-        console.warn('Finnhub failed', e);
-      }
-    }
-
-    return await MKT.quoteYahoo(symbol);
-  }
-,
-
-  startFinnhubWebSocket(symbols=[]){
-    if(!S.settings?.finnhubKey || !symbols.length) return;
-
-    try{
-      if(this.activeSocket){
-        this.activeSocket.close();
-      }
-
-      const socket = new WebSocket(`${CFG.FINNHUB_WS}?token=${S.settings.finnhubKey}`);
-
-      socket.onopen = () => {
-        console.log('Finnhub WebSocket connected');
-        symbols.forEach(sym => {
-          socket.send(JSON.stringify({ type:'subscribe', symbol:sym }));
-        });
-      };
-
-      socket.onmessage = (event) => {
-        const msg = JSON.parse(event.data);
-
-        if(msg.type === 'trade' && msg.data){
-          msg.data.forEach(trade => {
-            S.quotes[trade.s] = {
-              ...(S.quotes[trade.s] || {}),
-              regularMarketPrice: trade.p,
-              regularMarketTime: trade.t,
-            };
-          });
-
-          if(window.app?.renderWatchlist){
-            window.app.renderWatchlist();
-          }
-        }
-      };
-
-      socket.onerror = err => console.warn('WebSocket error', err);
-
-      this.activeSocket = socket;
-    }catch(e){
-      console.warn('WebSocket init failed', e);
-    }
-  }
 };
 
 // ────────────────────────────────────────────────────────────
@@ -835,11 +665,6 @@ const U = {
     return .5*(1+s*(1-((((a5*t+a4)*t+a3)*t+a2)*t+a1)*t*Math.exp(-x*x)));
   },
   Npdf: x => Math.exp(-.5*x*x)/Math.sqrt(2*Math.PI),
-};
-
-const CACHE = {
-  get(k){ const c=S.cache[k]; return c && Date.now()-c.ts<60000 ? c.data : null; },
-  set(k,data){ S.cache[k]={ts:Date.now(),data}; return data; }
 };
 
 // ────────────────────────────────────────────────────────────
@@ -916,10 +741,42 @@ const IND = {
 // ────────────────────────────────────────────────────────────
 //  MARKET DATA
 // ────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────
+//  CACHE  — in-memory TTL cache, resets on page reload
+//  (intentional: no stale overnight data carried forward)
+// ────────────────────────────────────────────────────────────
+const CACHE = {
+  _store: {},
+  TTL_QUOTE:   5  * 60 * 1000,   // 5 min  — live quotes
+  TTL_HISTORY: 30 * 60 * 1000,   // 30 min — OHLCV charts
+  TTL_OPTIONS: 10 * 60 * 1000,   // 10 min — options chain
+  set(key,value,ttl){ this._store[key]={value,exp:Date.now()+ttl,ts:Date.now()}; },
+  get(key){
+    const e=this._store[key];
+    if(!e) return null;
+    if(Date.now()>e.exp){delete this._store[key];return null;}
+    return e;
+  },
+  ageStr(key){
+    const e=this._store[key]; if(!e) return null;
+    const s=Math.floor((Date.now()-e.ts)/1000);
+    return s<60?`${s}s ago`:`${Math.floor(s/60)}m ago`;
+  },
+  size(){ return Object.keys(this._store).filter(k=>this.get(k)).length; },
+  clear(){ this._store={}; },
+};
+
+// ────────────────────────────────────────────────────────────
+//  MARKET DATA  — Finnhub primary · Yahoo CORS fallback
+//  Finnhub free: 60 calls/min, real-time US quotes, OHLCV,
+//  company news, earnings calendar.
+//  Options chain: Finnhub (with key) → Yahoo CORS fallback.
+// ────────────────────────────────────────────────────────────
 const MKT = {
-  // ── CORS proxy fetch (for Yahoo Finance options chain) ──
+
+  // ── CORS proxy fetch — Yahoo Finance fallback only ──
   async fetch(url){
-    for(const proxy of [CFG.PROXY1, CFG.PROXY2, CFG.PROXY3]){
+    for(const proxy of [CFG.PROXY1,CFG.PROXY2,CFG.PROXY3]){
       try{
         const r=await fetch(proxy+encodeURIComponent(url),{signal:AbortSignal.timeout(10000)});
         if(!r.ok) continue;
@@ -931,75 +788,196 @@ const MKT = {
     return null;
   },
 
-  
-  // ── Finnhub realtime quote ──
-  async quoteFinnhub(sym, apiKey){
+  // ── Finnhub: single quote ──
+  async _fhQuote(sym,key){
     try{
-      const r = await fetch(`${CFG.FINNHUB_BASE}/quote?symbol=${sym}&token=${apiKey}`);
-      const d = await r.json();
-
-      if(!d || !d.c) return null;
-
+      const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${key}`,{signal:AbortSignal.timeout(8000)});
+      if(!r.ok) return null;
+      const d=await r.json();
+      // d: {c:current, d:change, dp:change%, h,l,o,pc:prev_close}
+      if(!d||!d.c) return null;
       return {
-        symbol: sym,
+        symbol:sym, shortName:sym,
         regularMarketPrice: d.c,
-        regularMarketChange: d.d,
-        regularMarketChangePercent: d.dp,
+        regularMarketChange: d.d||0,
+        regularMarketChangePercent: d.dp||0,
+        regularMarketVolume: 0,           // basic quote has no volume; use profile2 for that
+        fiftyTwoWeekHigh: d.h||0,
+        fiftyTwoWeekLow:  d.l||0,
+        prevClose: d.pc||0,
+        _src:'Finnhub',
       };
-    }catch{
-      return null;
-    }
+    }catch{return null;}
   },
 
-  
+  // ── Finnhub: batch quotes (one call per symbol — 60/min limit) ──
+  async quotesFH(syms,key){
+    // Finnhub free has no batch endpoint; fetch in parallel with a small stagger
+    const STAGGER=120; // ms between launches to stay under burst limit
+    const results={};
+    await Promise.all(syms.map((sym,i)=>new Promise(res=>setTimeout(async()=>{
+      const q=await this._fhQuote(sym,key);
+      if(q) results[sym]=q;
+      res();
+    },i*STAGGER))));
+    return Object.keys(results).length ? results : null;
+  },
 
-  // ── Yahoo final fallback ──
-  async quoteYahoo(sym){
+  // ── Finnhub: OHLCV candles ──
+  async historyFH(sym,days=90,key){
     try{
-      const url=`${CFG.YF1}/v7/finance/quote?symbols=${sym}`;
-      const d=await this.fetch(url);
-      return d?.quoteResponse?.result?.[0] || null;
-    }catch{
-      return null;
-    }
+      const to=Math.floor(Date.now()/1000);
+      const from=to - days*86400;
+      const url=`https://finnhub.io/api/v1/stock/candle?symbol=${sym}&resolution=D&from=${from}&to=${to}&token=${key}`;
+      const r=await fetch(url,{signal:AbortSignal.timeout(12000)});
+      if(!r.ok) return null;
+      const d=await r.json();
+      if(!d||d.s==='no_data'||!d.c?.length) return null;
+      return{
+        timestamps:d.t, closes:d.c, opens:d.o,
+        highs:d.h, lows:d.l, volumes:d.v||[],
+        earningsEvents:[], _src:'Finnhub',
+      };
+    }catch{return null;}
   },
 
+  // ── Finnhub: options chain ──
+  async optionsChainFH(sym,key){
+    try{
+      // Finnhub options endpoint
+      const url=`https://finnhub.io/api/v1/stock/option-chain?symbol=${sym}&token=${key}`;
+      const r=await fetch(url,{signal:AbortSignal.timeout(12000)});
+      if(!r.ok) return null;
+      const d=await r.json();
+      // Finnhub returns {data:[{expirationDate,options:{CALL:[...],PUT:[...]}}], ...}
+      if(!d?.data?.length) return null;
+      const calls=[]; const puts=[];
+      const expiryDates=[];
+      for(const exp of d.data){
+        const expDate=exp.expirationDate;
+        if(expDate) expiryDates.push(expDate);
+        for(const c of (exp.options?.CALL||[])){
+          calls.push({
+            contractSymbol:c.contractName||'',
+            strike:c.strike||0,
+            expiration:expDate||'',
+            lastPrice:c.lastPrice||0,
+            bid:c.bid||0, ask:c.ask||0,
+            volume:c.volume||0, openInterest:c.openInterest||0,
+            impliedVolatility:c.impliedVolatility||0,
+            delta:c.delta||0, gamma:c.gamma||0,
+            theta:c.theta||0, vega:c.vega||0,
+            inTheMoney:false, _src:'Finnhub',
+          });
+        }
+        for(const p of (exp.options?.PUT||[])){
+          puts.push({
+            contractSymbol:p.contractName||'',
+            strike:p.strike||0,
+            expiration:expDate||'',
+            lastPrice:p.lastPrice||0,
+            bid:p.bid||0, ask:p.ask||0,
+            volume:p.volume||0, openInterest:p.openInterest||0,
+            impliedVolatility:p.impliedVolatility||0,
+            delta:p.delta||0, gamma:p.gamma||0,
+            theta:p.theta||0, vega:p.vega||0,
+            inTheMoney:false, _src:'Finnhub',
+          });
+        }
+      }
+      return{
+        underlyingSymbol:sym,
+        expirationDates:expiryDates.map(e=>Math.floor(new Date(e).getTime()/1000)),
+        _expirationStrings:expiryDates,
+        options:[{calls,puts}], _src:'Finnhub',
+      };
+    }catch(e){console.error('FH options error',e);return null;}
+  },
 
-  
-
-  
-
-  // ── Public: quotes (TD first, Yahoo fallback) ──
+  // ── Public: quotes ──
+  // Order: cache → Finnhub → Yahoo CORS
   async quotes(syms){
     if(!syms.length) return {};
-    const cacheKey='quotes_'+syms.slice().sort().join(',');
+    const cacheKey='quotes_'+syms.sort().join(',');
     const cached=CACHE.get(cacheKey);
-    if(cached) return cached;
+    if(cached){console.log('[CACHE HIT] quotes',CACHE.ageStr(cacheKey));return cached.value;}
+
+    const fhKey=S.settings?.fhKey;
+    let result=null;
+
+    if(fhKey){
+      result=await this.quotesFH(syms,fhKey);
+      if(result&&Object.keys(result).length){
+        CACHE.set(cacheKey,result,CACHE.TTL_QUOTE);
+        MKT._updateCacheDisplay(); return result;
+      }
+    }
+    // Yahoo CORS fallback
     const url=`${CFG.YF1}/v7/finance/quote?symbols=${syms.join(',')}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketVolume,marketCap,fiftyTwoWeekHigh,fiftyTwoWeekLow,shortName`;
     const d=await this.fetch(url);
-    const yf=d?.quoteResponse?.result?Object.fromEntries(d.quoteResponse.result.map(q=>[q.symbol,q])):{};
-    return CACHE.set(cacheKey,yf);
-
+    if(d?.quoteResponse?.result){
+      result=Object.fromEntries(d.quoteResponse.result.map(q=>[q.symbol,{...q,_src:'Yahoo'}]));
+      CACHE.set(cacheKey,result,CACHE.TTL_QUOTE);
+      MKT._updateCacheDisplay();
+    }
+    return result||{};
   },
 
-  // ── Public: options chain (Yahoo only — TD options require paid plan) ──
+  // ── Public: options chain ──
+  // Order: cache → Finnhub → Yahoo CORS
   async optionsChain(sym,date=null){
+    const cacheKey=`opts_${sym}_${date||'all'}`;
+    const cached=CACHE.get(cacheKey);
+    if(cached){console.log('[CACHE HIT] options',sym);return cached.value;}
+
+    const fhKey=S.settings?.fhKey;
+    if(fhKey&&!date){
+      const res=await this.optionsChainFH(sym,fhKey);
+      if(res){CACHE.set(cacheKey,res,CACHE.TTL_OPTIONS);MKT._updateCacheDisplay();return res;}
+    }
+    // Yahoo CORS fallback
     let url=`${CFG.YF2}/v7/finance/options/${sym}`;
     if(date) url+=`?date=${date}`;
     const d=await this.fetch(url);
-    return d?.optionChain?.result?.[0]||null;
+    const res=d?.optionChain?.result?.[0]||null;
+    if(res) CACHE.set(cacheKey,res,CACHE.TTL_OPTIONS);
+    MKT._updateCacheDisplay();
+    return res;
   },
 
-  // ── Public: price history (TD first, Yahoo fallback) ──
+  // ── Public: price history ──
+  // Order: cache → Finnhub → Yahoo CORS
   async history(sym,range='3mo',interval='1d'){
+    const cacheKey=`hist_${sym}_${range}`;
+    const cached=CACHE.get(cacheKey);
+    if(cached){console.log('[CACHE HIT] history',sym,CACHE.ageStr(cacheKey));return cached.value;}
+
+    const fhKey=S.settings?.fhKey;
+    const sizeMap={'1mo':30,'3mo':90,'6mo':180,'1y':252,'2y':504};
+
+    if(fhKey){
+      const res=await this.historyFH(sym,sizeMap[range]||90,fhKey);
+      if(res){CACHE.set(cacheKey,res,CACHE.TTL_HISTORY);MKT._updateCacheDisplay();return res;}
+    }
+    // Yahoo CORS fallback
     const url=`${CFG.YF1}/v8/finance/chart/${sym}?range=${range}&interval=${interval}&events=earnings`;
     const d=await this.fetch(url);
     const result=d?.chart?.result?.[0];
     if(!result) return null;
     const q=result.indicators?.quote?.[0]||{};
     const earningsEvents=result.events?.earnings?Object.values(result.events.earnings):[];
-    return{timestamps:result.timestamp||[],closes:q.close||[],opens:q.open||[],highs:q.high||[],lows:q.low||[],volumes:q.volume||[],earningsEvents};
+    const res={timestamps:result.timestamp||[],closes:q.close||[],opens:q.open||[],highs:q.high||[],lows:q.low||[],volumes:q.volume||[],earningsEvents,_src:'Yahoo'};
+    CACHE.set(cacheKey,res,CACHE.TTL_HISTORY);
+    MKT._updateCacheDisplay();
+    return res;
+  },
 
+  // ── Cache status badge ──
+  _updateCacheDisplay(){
+    const el=document.getElementById('cache-badge');
+    if(!el) return;
+    const n=CACHE.size();
+    el.textContent=n>0?`💾 ${n} item${n>1?'s':''} cached`:'';
   },
 };
 
@@ -1356,16 +1334,16 @@ const app = {
 
     if(statusEl) statusEl.textContent='';
     if(!Object.keys(S.quotes).length){
-      const hasTD = !!null;
+      const hasFH=!!(S.settings?.fhKey);
       grid.innerHTML=`<div style="grid-column:1/-1;" class="card">
         <div style="color:var(--yellow);font-size:13px;font-weight:600;margin-bottom:8px;">⚠️ Market data unavailable</div>
         <div style="font-size:12px;color:var(--muted);line-height:1.6;">
-          ${hasTD
-            ? `TwelveData API key is saved but returned no data.<br>
-               This can happen when: the market is closed &amp; , the free plan rate limit is hit, or the key has expired.<br><br>
-               <strong style="color:var(--text);">Try:</strong> Wait 60 seconds and click <strong style="color:var(--accent2);">Refresh</strong>. If the issue persists, verify your key at <a href="https://finnhub.io/account/api-keys" target="_blank" style="color:var(--accent2);">.com</a>.`
-            : `Finnhub API key required for realtime quotes.<br><br>
-               <strong style="color:var(--text);">Fix:</strong> Go to <strong style="color:var(--text);">⚙ Settings</strong> → Market Data API → add a free key from <a href="https://finnhub.io/register" target="_blank" style="color:var(--accent2);">finnhub.io</a>.`
+          ${hasFH
+            ? `Finnhub API key is saved but returned no data.<br>
+               This can happen when: the market is closed and Finnhub returns null, the free plan rate limit (60 calls/min) was briefly hit, or the key has expired.<br><br>
+               <strong style="color:var(--text);">Try:</strong> Wait 60 seconds and click <strong style="color:var(--accent2);">Refresh</strong>. If the issue persists, verify your key at <a href="https://finnhub.io/dashboard" target="_blank" style="color:var(--accent2);">finnhub.io/dashboard</a>.`
+            : `No Finnhub API key configured and Yahoo Finance CORS proxy is unavailable.<br><br>
+               <strong style="color:var(--text);">Fix:</strong> Go to <strong style="color:var(--text);">⚙ Settings</strong> → Market Data API → add your free key from <a href="https://finnhub.io/register" target="_blank" style="color:var(--accent2);">finnhub.io/register</a> (60 calls/min, no credit card).`
           }
         </div>
       </div>`;
@@ -1512,18 +1490,6 @@ const app = {
       c.innerHTML=`<div class="card">
         <div style="color:var(--yellow);font-size:12px;margin-bottom:10px;">⚠️ Live earnings calendar is limited via free APIs</div>
         <div style="font-size:11px;color:var(--muted);line-height:1.8;">
-<div style="margin-top:10px;padding:10px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(255,255,255,.02);">
-  <div style="font-size:11px;font-weight:600;color:var(--accent2);margin-bottom:6px;">
-    ACTIVE PROVIDER PRIORITY
-  </div>
-
-  <div style="font-size:11px;line-height:1.7;color:var(--muted);">
-    1. Finnhub WebSocket → Primary realtime streaming<br>
-    2.  → Secondary quote fallback<br>
-    3. Yahoo Finance → Emergency backup provider
-  </div>
-</div>
-
           <div style="margin-bottom:8px;">For reliable earnings data, use these free resources:</div>
           <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
             ${[['EarningsWhispers','https://earningswhispers.com'],['Yahoo Finance Earnings','https://finance.yahoo.com/calendar/earnings'],['Barchart Unusual Activity','https://www.barchart.com/options/unusual-activity/stocks'],['Market Chameleon','https://marketchameleon.com/Overview/']].map(([n,u])=>`<a href="${u}" target="_blank" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:4px 10px;color:var(--accent2);font-size:10px;text-decoration:none;">${n} ↗</a>`).join('')}
@@ -1730,7 +1696,7 @@ const app = {
 
   loadSettings(){
     const s=S.settings;
-    if(s.finnhubKey&&U.$('s-td-key')) U.$('s-td-key').value=s.finnhubKey;
+    if(s.fhKey&&U.$('s-fh-key')) U.$('s-fh-key').value=s.fhKey;
     if(s.sheetsId&&U.$('s-sheet-id')) U.$('s-sheet-id').value=s.sheetsId;
     if(s.apiKey&&U.$('s-api-key')) U.$('s-api-key').value=s.apiKey;
     if(s.clientId&&U.$('s-client-id')) U.$('s-client-id').value=s.clientId;
@@ -1738,27 +1704,27 @@ const app = {
     if(s.maxPos&&U.$('r-position')) U.$('r-position').value=s.maxPos;
     if(s.maxLoss&&U.$('r-daily-loss')) U.$('r-daily-loss').value=s.maxLoss;
     if(s.defContracts&&U.$('r-contracts')) U.$('r-contracts').value=s.defContracts;
+    MKT._updateCacheDisplay();
   },
 
-  async saveTDKey(){
-    const key=(U.$('s-td-key')?.value||'').trim();
-    if(!key){toast('Enter an API key first','warn');return;}
-    S.settings={...S.settings,unusedKey:
-        localStorage.getItem("unusedKey") || "",
-        finnhubKey:key};
+  async saveFHKey(){
+    const key=(U.$('s-fh-key')?.value||'').trim();
+    if(!key){toast('Enter your Finnhub API key first','warn');return;}
+    S.settings={...S.settings,fhKey:key};
     DB.s('settings',S.settings);
-    const el=U.$('td-status');
-    if(el){el.textContent='Testing…';el.style.color='var(--muted)';}
-    // Test with a single quote
-    const res = await MKT.quotesTD(['SPY'], key);
+    const el=U.$('fh-status');
+    if(el){el.textContent='Testing connection…';el.style.color='var(--muted)';}
+    // Test: fetch a single SPY quote
+    const q=await MKT._fhQuote('SPY',key);
     if(el){
-      if(res){
-        el.textContent=`✓ Connected — SPY: $${res.SPY?.regularMarketPrice?.toFixed(2)||'?'}`;
+      if(q){
+        el.textContent=`✓ Finnhub connected — SPY: $${q.regularMarketPrice?.toFixed(2)||'?'} (${q.regularMarketChangePercent>=0?'+':''}${q.regularMarketChangePercent?.toFixed(2)||'0'}%)`;
         el.style.color='var(--green)';
-        toast(' connected! Refreshing dashboard…','success');
+        toast('Finnhub connected! Loading dashboard…','success');
+        CACHE.clear();
         this.refreshAll();
       } else {
-        el.textContent='✗ Invalid key or rate limit hit. Check your key at .com';
+        el.textContent='✗ Could not connect — check your key at finnhub.io/dashboard or try again in a moment';
         el.style.color='var(--red)';
       }
     }
@@ -1772,41 +1738,6 @@ document.addEventListener('DOMContentLoaded',()=>app.init());
 
 // Close modals on backdrop click
 document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('open'); }));
-
-app.saveFinnhubKey = function(){
-  const keyField = document.getElementById('s-fh-key');
-  if(!keyField) return;
-
-  const key = keyField.value.trim();
-
-  S.settings = S.settings || {};
-  S.settings.finnhubKey = key;
-
-  localStorage.setItem('od_settings', JSON.stringify(S.settings));
-
-  const status = document.getElementById('td-status');
-  if(status){
-    status.innerHTML = key
-      ? 'Finnhub API key saved.'
-      : 'Enter a Finnhub API key.';
-  }
-
-  toast('Finnhub settings saved','success');
-};
-
-
-document.addEventListener('DOMContentLoaded', () => {
-  try{
-    const settings = JSON.parse(localStorage.getItem('od_settings') || '{}');
-    const fh = document.getElementById('s-fh-key');
-    if(fh && settings.finnhubKey){
-      fh.value = settings.finnhubKey;
-    }
-  }catch(e){}
-});
-
 </script>
-
 </body>
-
 </html>
