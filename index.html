@@ -756,27 +756,39 @@ const MKT = {
   // ── Twelve Data: quotes ──
   async quotesTD(syms, apiKey){
     try{
-      const url=`${CFG.TD_BASE}/quote?symbol=${syms.join(',')}&apikey=${apiKey}`;
-      const r=await fetch(url,{signal:AbortSignal.timeout(10000)});
-      if(!r.ok) return null;
-      const d=await r.json();
-      // Single symbol returns object directly; multiple returns {SYM: {...}}
-      const items = syms.length===1 ? {[syms[0]]:d} : d;
+      // Twelve Data free plan: max 8 symbols per request — batch if needed
+      const BATCH=8;
       const result={};
-      for(const [sym,q] of Object.entries(items)){
-        if(!q||q.status==='error'||!q.close) continue;
-        result[sym]={
-          symbol:sym, shortName:q.name||sym,
-          regularMarketPrice:parseFloat(q.close),
-          regularMarketChange:parseFloat(q.change||0),
-          regularMarketChangePercent:parseFloat(q.percent_change||0),
-          regularMarketVolume:parseInt(q.volume||0),
-          fiftyTwoWeekHigh:parseFloat(q.fifty_two_week?.high||0),
-          fiftyTwoWeekLow:parseFloat(q.fifty_two_week?.low||0),
-        };
+      for(let i=0;i<syms.length;i+=BATCH){
+        const batch=syms.slice(i,i+BATCH);
+        const url=`${CFG.TD_BASE}/quote?symbol=${batch.join(',')}&apikey=${apiKey}`;
+        const r=await fetch(url,{signal:AbortSignal.timeout(12000)});
+        if(!r.ok) continue;
+        const d=await r.json();
+        // TD returns a single object when 1 sym, or {SYM:{...}, SYM:{...}} for multiple
+        // It may also return {status:'error'} at the top level
+        if(d?.status==='error') continue;
+        // Normalise: if the response has a 'symbol' key it's a single-quote object
+        const items = (d?.symbol) ? {[d.symbol]: d} : d;
+        for(const [sym,q] of Object.entries(items)){
+          if(!q||typeof q!=='object') continue;
+          if(q.status==='error') continue;
+          const price=parseFloat(q.close||q.price||0);
+          if(!price) continue;
+          result[sym]={
+            symbol:sym,
+            shortName:q.name||sym,
+            regularMarketPrice:price,
+            regularMarketChange:parseFloat(q.change||0),
+            regularMarketChangePercent:parseFloat(q.percent_change||0),
+            regularMarketVolume:parseInt(q.volume||0),
+            fiftyTwoWeekHigh:parseFloat(q.fifty_two_week?.high||0),
+            fiftyTwoWeekLow:parseFloat(q.fifty_two_week?.low||0),
+          };
+        }
       }
       return Object.keys(result).length ? result : null;
-    }catch{return null;}
+    }catch(e){console.error('TD quotes error',e);return null;}
   },
 
   // ── Twelve Data: OHLCV history ──
@@ -805,8 +817,10 @@ const MKT = {
   async quotes(syms){
     if(!syms.length) return {};
     const tdKey=S.settings?.tdKey;
+    console.log('[OptionsDesk] quotes() called. TD key present:', !!tdKey, '| Symbols:', syms);
     if(tdKey){
       const res=await this.quotesTD(syms,tdKey);
+      console.log('[OptionsDesk] TD result:', res);
       if(res&&Object.keys(res).length) return res;
     }
     // Yahoo Finance fallback via CORS proxy
@@ -1197,13 +1211,17 @@ const app = {
 
     if(statusEl) statusEl.textContent='';
     if(!Object.keys(S.quotes).length){
+      const hasTD=!!(S.settings?.tdKey);
       grid.innerHTML=`<div style="grid-column:1/-1;" class="card">
         <div style="color:var(--yellow);font-size:13px;font-weight:600;margin-bottom:8px;">⚠️ Market data unavailable</div>
         <div style="font-size:12px;color:var(--muted);line-height:1.6;">
-          Could not reach Yahoo Finance via CORS proxy.<br>
-          This is common outside market hours or when the proxy is rate-limited.<br><br>
-          <strong style="color:var(--text);">Try:</strong> Click <strong style="color:var(--accent2);">Refresh</strong> above, or wait a minute and try again.<br>
-          The app's Trade Log and Settings work offline regardless.
+          ${hasTD
+            ? `Twelve Data API key is saved but returned no data.<br>
+               This can happen when: the market is closed &amp; TD returns stale/null quotes, the free plan rate limit (800/day or 8/min) is hit, or the key has expired.<br><br>
+               <strong style="color:var(--text);">Try:</strong> Wait 60 seconds and click <strong style="color:var(--accent2);">Refresh</strong>. If the issue persists, verify your key at <a href="https://twelvedata.com/account/api-keys" target="_blank" style="color:var(--accent2);">twelvedata.com</a>.`
+            : `No API key configured and Yahoo Finance CORS proxy is unavailable.<br><br>
+               <strong style="color:var(--text);">Fix:</strong> Go to <strong style="color:var(--text);">⚙ Settings</strong> → Market Data API → add a free key from <a href="https://twelvedata.com/register" target="_blank" style="color:var(--accent2);">twelvedata.com</a>.`
+          }
         </div>
       </div>`;
       return;
