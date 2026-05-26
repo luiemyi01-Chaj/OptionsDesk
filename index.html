@@ -485,7 +485,7 @@
         <div style="font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.5;">
           Hybrid multi-provider market data architecture with automatic fallback.<br><br>
 Primary: Finnhub WebSocket realtime streaming<br>
-Fallbacks: Twelve Data → Yahoo Finance<br><br>
+Fallbacks:  → Yahoo Finance<br><br>
 This architecture minimizes API exhaustion by using:
 <ul style="margin-top:6px;margin-left:18px;line-height:1.6;">
 <li>60-second quote cache</li>
@@ -496,7 +496,7 @@ This architecture minimizes API exhaustion by using:
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <div>
-            <span class="label">Twelve Data API Key</span>
+            <span class="label"> API Key</span>
             <input id="s-td-key" type="password" style="width:100%;" placeholder="your_api_key_here">
 
           <div style="margin-top:10px;">
@@ -526,7 +526,7 @@ This architecture minimizes API exhaustion by using:
           <button class="btn btn-blue" onclick="app.saveTDKey()">Save &amp; Test</button>
           <div id="td-status" style="font-size:11px;color:var(--muted);"></div>
           <div style="font-size:10px;color:var(--muted);line-height:1.6;">
-            <strong style="color:var(--text);">Setup:</strong> Go to <a href="https://twelvedata.com/register" target="_blank" style="color:var(--accent2);">twelvedata.com/register</a> → free account → copy API key → paste above.
+            <strong style="color:var(--text);">Setup:</strong> Go to <a href="https://.com/register" target="_blank" style="color:var(--accent2);">.com/register</a> → free account → copy API key → paste above.
           </div>
         </div>
       </div>
@@ -598,7 +598,7 @@ This architecture minimizes API exhaustion by using:
         </div>
         <div>
           <div style="color:var(--text);font-weight:600;margin-bottom:4px;">4. Market Data (Required)</div>
-          Free API key from <a href="https://twelvedata.com/register" target="_blank" style="color:var(--accent2);">twelvedata.com</a> — 800 calls/day, no credit card. Go to Settings → Market Data API → paste key → Save &amp; Test. Options chains use Yahoo Finance as fallback.
+          Free API key from <a href="https://.com/register" target="_blank" style="color:var(--accent2);">.com</a> — 800 calls/day, no credit card. Go to Settings → Market Data API → paste key → Save &amp; Test. Options chains use Yahoo Finance as fallback.
         </div>
       </div>
     </div>
@@ -653,7 +653,7 @@ const CFG = {
   PROXY3:  'https://api.codetabs.com/v1/proxy?quest=',
   YF1:     'https://query1.finance.yahoo.com',
   YF2:     'https://query2.finance.yahoo.com',
-  TD_BASE: 'https://api.twelvedata.com',
+  TD_BASE: 'https://api..com',
   FINNHUB_BASE: 'https://finnhub.io/api/v1',
   FINNHUB_WS: 'wss://ws.finnhub.io',
   RFR:     0.053,
@@ -696,12 +696,12 @@ const PROVIDERS = {
       }catch(e){ console.warn('Finnhub failed', e); }
     }
 
-    // 2. Twelve Data
-    if(S.settings?.tdKey){
+    // 2. 
+    if(){
       try{
-        const q = await MKT.quoteTD(symbol, S.settings.tdKey);
+        const q = await MKT.(symbol, S.settings.tdKey);
         if(q) return q;
-      }catch(e){ console.warn('TwelveData failed', e); }
+      }catch(e){ console.warn(' failed', e); }
     }
 
     // 3. Polygon
@@ -898,9 +898,9 @@ const MKT = {
     }
   },
 
-  // ── Single symbol Twelve Data ──
-  async quoteTD(sym, apiKey){
-    const data = await this.quotesTD([sym], apiKey);
+  // ── Single symbol  ──
+  async (sym, apiKey){
+    const data = await this.([sym], apiKey);
     return data?.[sym] || null;
   },
 
@@ -936,8 +936,8 @@ const MKT = {
   },
 
 
-  // ── Twelve Data: quotes ──
-  async quotesTD(syms, apiKey){
+  // ── : quotes ──
+  async (syms, apiKey){
     try{
       // TD free plan allows multiple symbols in one call (comma-separated).
       // Batch into groups of 55 (well under any hard limit) with a delay between batches.
@@ -980,7 +980,7 @@ const MKT = {
     }catch(e){console.error('TD quotes error',e);return null;}
   },
 
-  // ── Twelve Data: OHLCV history ──
+  // ── : OHLCV history ──
   async historyTD(sym, outputsize=90, apiKey){
     try{
       const url=`${CFG.TD_BASE}/time_series?symbol=${sym}&interval=1day&outputsize=${outputsize}&apikey=${apiKey}`;
@@ -988,7 +988,7 @@ const MKT = {
       if(!r.ok) return null;
       const d=await r.json();
       if(d.status==='error'||!d.values?.length) return null;
-      // Twelve Data returns newest first — reverse to oldest-first
+      //  returns newest first — reverse to oldest-first
       const vals=[...d.values].reverse();
       return{
         timestamps:vals.map(v=>Math.floor(new Date(v.datetime).getTime()/1000)),
@@ -1008,10 +1008,10 @@ const MKT = {
     const cacheKey='quotes_'+syms.slice().sort().join(',');
     const cached=CACHE.get(cacheKey);
     if(cached) return cached;
-    const tdKey=S.settings?.tdKey;
+    const tdKey=;
     const polygonKey=S.settings?.polygonKey;
     if(tdKey){
-      const res=await this.quotesTD(syms,tdKey);
+      const res=await this.(syms,tdKey);
       if(res&&Object.keys(res).length) return CACHE.set(cacheKey,res);
     }
     if(polygonKey){
@@ -1034,10 +1034,10 @@ const MKT = {
 
   // ── Public: price history (TD first, Yahoo fallback) ──
   async history(sym,range='3mo',interval='1d'){
-    const tdKey=S.settings?.tdKey;
+    const tdKey=;
     const polygonKey=S.settings?.polygonKey;
     if(tdKey){
-      const res=await this.quotesTD(syms,tdKey);
+      const res=await this.(syms,tdKey);
       if(res&&Object.keys(res).length) return CACHE.set(cacheKey,res);
     }
     if(polygonKey){
@@ -1407,16 +1407,16 @@ const app = {
 
     if(statusEl) statusEl.textContent='';
     if(!Object.keys(S.quotes).length){
-      const hasTD=!!(S.settings?.tdKey);
+      const hasTD=!!();
       grid.innerHTML=`<div style="grid-column:1/-1;" class="card">
         <div style="color:var(--yellow);font-size:13px;font-weight:600;margin-bottom:8px;">⚠️ Market data unavailable</div>
         <div style="font-size:12px;color:var(--muted);line-height:1.6;">
           ${hasTD
-            ? `Twelve Data API key is saved but returned no data.<br>
-               This can happen when: the market is closed &amp; TD returns stale/null quotes, the free plan rate limit (800/day or 8/min) is hit, or the key has expired.<br><br>
-               <strong style="color:var(--text);">Try:</strong> Wait 60 seconds and click <strong style="color:var(--accent2);">Refresh</strong>. If the issue persists, verify your key at <a href="https://twelvedata.com/account/api-keys" target="_blank" style="color:var(--accent2);">twelvedata.com</a>.`
+            ? ` API key is saved but returned no data.<br>
+               This can happen when: the market is closed &amp; , the free plan rate limit () is hit, or the key has expired.<br><br>
+               <strong style="color:var(--text);">Try:</strong> Wait 60 seconds and click <strong style="color:var(--accent2);">Refresh</strong>. If the issue persists, verify your key at <a href="https://.com/account/api-keys" target="_blank" style="color:var(--accent2);">.com</a>.`
             : `No API key configured and Yahoo Finance CORS proxy is unavailable.<br><br>
-               <strong style="color:var(--text);">Fix:</strong> Go to <strong style="color:var(--text);">⚙ Settings</strong> → Market Data API → add a free key from <a href="https://twelvedata.com/register" target="_blank" style="color:var(--accent2);">twelvedata.com</a>.`
+               <strong style="color:var(--text);">Fix:</strong> Go to <strong style="color:var(--text);">⚙ Settings</strong> → Market Data API → add a free key from <a href="https://.com/register" target="_blank" style="color:var(--accent2);">.com</a>.`
           }
         </div>
       </div>`;
@@ -1570,7 +1570,7 @@ const app = {
 
   <div style="font-size:11px;line-height:1.7;color:var(--muted);">
     1. Finnhub WebSocket → Primary realtime streaming<br>
-    2. Twelve Data → Secondary quote fallback<br>
+    2.  → Secondary quote fallback<br>
     3. Yahoo Finance → Emergency backup provider
   </div>
 </div>
@@ -1801,15 +1801,15 @@ const app = {
     const el=U.$('td-status');
     if(el){el.textContent='Testing…';el.style.color='var(--muted)';}
     // Test with a single quote
-    const res=await MKT.quotesTD(['SPY'],key);
+    const res=await MKT.(['SPY'],key);
     if(el){
       if(res){
         el.textContent=`✓ Connected — SPY: $${res.SPY?.regularMarketPrice?.toFixed(2)||'?'}`;
         el.style.color='var(--green)';
-        toast('Twelve Data connected! Refreshing dashboard…','success');
+        toast(' connected! Refreshing dashboard…','success');
         this.refreshAll();
       } else {
-        el.textContent='✗ Invalid key or rate limit hit. Check your key at twelvedata.com';
+        el.textContent='✗ Invalid key or rate limit hit. Check your key at .com';
         el.style.color='var(--red)';
       }
     }
@@ -1825,29 +1825,6 @@ document.addEventListener('DOMContentLoaded',()=>app.init());
 document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('open'); }));
 </script>
 
-<div class="card" style="margin:16px;">
-  <div style="font-size:13px;font-weight:600;margin-bottom:10px;">
-    ⚡ Realtime Market Data Architecture
-  </div>
-
-  <div style="font-size:11px;color:var(--muted);line-height:1.8;">
-    <b style="color:var(--text);">Recommended Free Stack:</b><br>
-    • Finnhub = Primary realtime WebSocket feed<br>
-    • Twelve Data = Historical candles and fallback quotes<br>
-    • Yahoo Finance = Emergency fallback<br>
-    <br>
-
-    <b style="color:var(--text);">Important:</b><br>
-    Do NOT refresh the dashboard every few seconds.<br>
-    Use 60-second polling + WebSockets to avoid exhausting free API tiers.<br><br>
-
-    <b style="color:var(--text);">Subscription Requirements:</b><br>
-    • Finnhub free account: NO credit card required<br>
-    • Twelve Data free account: NO credit card required<br>
-    • Yahoo Finance unofficial endpoints: NO account required<br>
-    
-  </div>
-</div>
 </body>
 
 </html>
