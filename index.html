@@ -484,8 +484,8 @@
         <div style="font-size:12px;font-weight:600;margin-bottom:4px;">📡 Market Data API</div>
         <div style="font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.5;">
           Hybrid multi-provider market data architecture with automatic fallback.<br><br>
-Primary: Finnhub WebSocket (best free realtime feed)<br>
-Fallbacks: Twelve Data → Yahoo Finance → Polygon<br><br>
+Primary: Finnhub WebSocket realtime streaming<br>
+Fallbacks: Twelve Data → Yahoo Finance<br><br>
 This architecture minimizes API exhaustion by using:
 <ul style="margin-top:6px;margin-left:18px;line-height:1.6;">
 <li>60-second quote cache</li>
@@ -654,7 +654,6 @@ const CFG = {
   YF1:     'https://query1.finance.yahoo.com',
   YF2:     'https://query2.finance.yahoo.com',
   TD_BASE: 'https://api.twelvedata.com',
-  POLYGON_BASE: 'https://api.polygon.io',
   FINNHUB_BASE: 'https://finnhub.io/api/v1',
   FINNHUB_WS: 'wss://ws.finnhub.io',
   RFR:     0.053,
@@ -1564,6 +1563,18 @@ const app = {
       c.innerHTML=`<div class="card">
         <div style="color:var(--yellow);font-size:12px;margin-bottom:10px;">⚠️ Live earnings calendar is limited via free APIs</div>
         <div style="font-size:11px;color:var(--muted);line-height:1.8;">
+<div style="margin-top:10px;padding:10px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(255,255,255,.02);">
+  <div style="font-size:11px;font-weight:600;color:var(--accent2);margin-bottom:6px;">
+    ACTIVE PROVIDER PRIORITY
+  </div>
+
+  <div style="font-size:11px;line-height:1.7;color:var(--muted);">
+    1. Finnhub WebSocket → Primary realtime streaming<br>
+    2. Twelve Data → Secondary quote fallback<br>
+    3. Yahoo Finance → Emergency backup provider
+  </div>
+</div>
+
           <div style="margin-bottom:8px;">For reliable earnings data, use these free resources:</div>
           <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
             ${[['EarningsWhispers','https://earningswhispers.com'],['Yahoo Finance Earnings','https://finance.yahoo.com/calendar/earnings'],['Barchart Unusual Activity','https://www.barchart.com/options/unusual-activity/stocks'],['Market Chameleon','https://marketchameleon.com/Overview/']].map(([n,u])=>`<a href="${u}" target="_blank" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:4px 10px;color:var(--accent2);font-size:10px;text-decoration:none;">${n} ↗</a>`).join('')}
@@ -1824,7 +1835,7 @@ document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ i
     • Finnhub = Primary realtime WebSocket feed<br>
     • Twelve Data = Historical candles and fallback quotes<br>
     • Yahoo Finance = Emergency fallback<br>
-    • Polygon.io = Optional additional fallback<br><br>
+    <br>
 
     <b style="color:var(--text);">Important:</b><br>
     Do NOT refresh the dashboard every few seconds.<br>
@@ -1834,7 +1845,7 @@ document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ i
     • Finnhub free account: NO credit card required<br>
     • Twelve Data free account: NO credit card required<br>
     • Yahoo Finance unofficial endpoints: NO account required<br>
-    • Polygon.io free account: signup required, limited realtime usage
+    
   </div>
 </div>
 </body>
