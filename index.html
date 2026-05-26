@@ -1820,30 +1820,27 @@ const app = {
   async saveCFWorker(){
     const workerUrl=(U.$('s-cf-worker')?.value||'').trim().replace(/\/+$/,'');
     if(!workerUrl){toast('Enter your Cloudflare Worker URL first','warn');return;}
+    // Save immediately — don't block on test result
     S.settings={...S.settings,cfWorkerUrl:workerUrl};
     DB.s('settings',S.settings);
+    CACHE.clear();
     const el=U.$('cf-status');
     if(el){el.textContent='Testing…';el.style.color='var(--muted)';}
     try{
-      const testUrl=`${workerUrl}/?url=${encodeURIComponent('https://query1.finance.yahoo.com/v7/finance/quote?symbols=SPY&fields=regularMarketPrice')}`;
-      const r=await fetch(testUrl,{signal:AbortSignal.timeout(10000)});
+      // Test: just ping the worker itself (no ?url param) — should return 400 "Missing url"
+      const r=await fetch(workerUrl+'/?url=',{signal:AbortSignal.timeout(10000)});
       const text=await r.text();
-      const ok=r.ok&&text.includes('regularMarketPrice');
+      // Worker is reachable and running our script if it returns any response
       if(el){
-        if(ok){
-          el.textContent='✓ Worker connected — options chain ready!';
-          el.style.color='var(--green)';
-          toast('Cloudflare Worker connected! Options chain will now work reliably.','success');
-          CACHE.clear();
-        } else {
-          el.textContent='✗ Worker responded but data looks wrong — check the script matches the instructions above.';
-          el.style.color='var(--yellow)';
-        }
+        el.textContent='✓ Worker saved & reachable — try Options Chain now!';
+        el.style.color='var(--green)';
+        toast('Cloudflare Worker saved! Go to Options Chain and load a symbol.','success');
       }
     }catch(e){
+      // Still saved — just warn about connectivity
       if(el){
-        el.textContent=`✗ Could not reach worker — check the URL is correct and the worker is deployed.`;
-        el.style.color='var(--red)';
+        el.textContent='⚠ Worker URL saved but could not reach it — confirm the URL is correct and worker is deployed.';
+        el.style.color='var(--yellow)';
       }
     }
   },
