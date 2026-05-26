@@ -910,7 +910,7 @@ const CHS = {
       scales:{
         x:{ticks:{color:'#4a6080',maxTicksLimit:8,font:{size:9,family:'JetBrains Mono'}},grid:{color:'rgba(30,45,66,0.5)'}},
         y:{ticks:{color:'#4a6080',font:{size:9,family:'JetBrains Mono'}},grid:{color:'rgba(30,45,66,0.5)'},
-           ...(yMin!=null?{min:yMin}:{}),(yMax!=null?{max:yMax}:{})}
+           ...(yMin!=null?{min:yMin}:{}),...(yMax!=null?{max:yMax}:{})}
       }
     };
   },
