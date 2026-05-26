@@ -1761,4 +1761,124 @@ const app = {
     if(U.$('s-add-ticker')) U.$('s-add-ticker').value='';
   },
 
-  closeModal(id){ U
+  closeModal(id){ U.$(id)?.classList.remove('open'); },
+
+  saveSheetsConfig(){
+    S.settings={...S.settings,sheetsId:U.$('s-sheet-id')?.value?.trim(),apiKey:U.$('s-api-key')?.value?.trim(),clientId:U.$('s-client-id')?.value?.trim()};
+    DB.s('settings',S.settings);
+    if(S.settings.sheetsId&&S.settings.apiKey){
+      GS.read('A1').then(d=>{
+        const el=U.$('sheets-status');
+        if(el){el.textContent=d!==null?'✓ Connected successfully':'✗ Connection failed — check Sheet ID and API key';el.style.color=d!==null?'var(--green)':'var(--red)';}
+      });
+    }
+    toast('Settings saved','success');
+  },
+
+  saveRisk(){
+    S.settings={...S.settings,account:U.$('r-account')?.value,maxPos:U.$('r-position')?.value,maxLoss:U.$('r-daily-loss')?.value,defContracts:U.$('r-contracts')?.value};
+    DB.s('settings',S.settings); toast('Risk settings saved','success');
+  },
+
+  async syncToSheets(){
+    if(!GS.cfg()){toast('Configure Google Sheets first','warn');return;}
+    const ok=await GS.write('Trades!A1',GS.toRows());
+    toast(ok?'Synced to Google Sheets':'Sync requires OAuth token — use JSON export instead',ok?'success':'error');
+  },
+
+  async importFromSheets(){
+    if(!GS.cfg()){toast('Configure Google Sheets first','warn');return;}
+    const rows=await GS.read('Trades!A1:Z9999');
+    if(!rows){toast('Failed to read Google Sheets','error');return;}
+    S.trades=GS.fromRows(rows); DB.s('trades',S.trades);
+    renderTradeRows(); renderTradeStats();
+    toast(`${S.trades.length} trades imported`,'success');
+  },
+
+  resetAll(){
+    if(!confirm('⚠️ Delete ALL trades and settings? This cannot be undone.')) return;
+    localStorage.clear(); S.trades=[]; S.watchlist=[...CFG.DEFAULT_WL]; S.settings={};
+    DB.s('trades',S.trades); DB.s('watchlist',S.watchlist); DB.s('settings',S.settings);
+    renderTradeRows(); renderTradeStats(); renderSettingsWL(); this.refreshAll();
+    toast('All data reset','info');
+  },
+
+  loadSettings(){
+    const s=S.settings;
+    if(s.fhKey&&U.$('s-fh-key')) U.$('s-fh-key').value=s.fhKey;
+    if(s.cfWorkerUrl&&U.$('s-cf-worker')) U.$('s-cf-worker').value=s.cfWorkerUrl;
+    if(s.sheetsId&&U.$('s-sheet-id')) U.$('s-sheet-id').value=s.sheetsId;
+    if(s.apiKey&&U.$('s-api-key')) U.$('s-api-key').value=s.apiKey;
+    if(s.clientId&&U.$('s-client-id')) U.$('s-client-id').value=s.clientId;
+    if(s.account&&U.$('r-account')) U.$('r-account').value=s.account;
+    if(s.maxPos&&U.$('r-position')) U.$('r-position').value=s.maxPos;
+    if(s.maxLoss&&U.$('r-daily-loss')) U.$('r-daily-loss').value=s.maxLoss;
+    if(s.defContracts&&U.$('r-contracts')) U.$('r-contracts').value=s.defContracts;
+    MKT._updateCacheDisplay();
+  },
+
+  async saveCFWorker(){
+    const workerUrl=(U.$('s-cf-worker')?.value||'').trim().replace(/\/+$/,'');
+    if(!workerUrl){toast('Enter your Cloudflare Worker URL first','warn');return;}
+    S.settings={...S.settings,cfWorkerUrl:workerUrl};
+    DB.s('settings',S.settings);
+    const el=U.$('cf-status');
+    if(el){el.textContent='Testing…';el.style.color='var(--muted)';}
+    try{
+      const testUrl=`${workerUrl}/?url=${encodeURIComponent('https://query1.finance.yahoo.com/v7/finance/quote?symbols=SPY&fields=regularMarketPrice')}`;
+      const r=await fetch(testUrl,{signal:AbortSignal.timeout(10000)});
+      const text=await r.text();
+      const ok=r.ok&&text.includes('regularMarketPrice');
+      if(el){
+        if(ok){
+          el.textContent='✓ Worker connected — options chain ready!';
+          el.style.color='var(--green)';
+          toast('Cloudflare Worker connected! Options chain will now work reliably.','success');
+          CACHE.clear();
+        } else {
+          el.textContent='✗ Worker responded but data looks wrong — check the script matches the instructions above.';
+          el.style.color='var(--yellow)';
+        }
+      }
+    }catch(e){
+      if(el){
+        el.textContent=`✗ Could not reach worker — check the URL is correct and the worker is deployed.`;
+        el.style.color='var(--red)';
+      }
+    }
+  },
+
+  async saveFHKey(){
+    const key=(U.$('s-fh-key')?.value||'').trim();
+    if(!key){toast('Enter your Finnhub API key first','warn');return;}
+    S.settings={...S.settings,fhKey:key};
+    DB.s('settings',S.settings);
+    const el=U.$('fh-status');
+    if(el){el.textContent='Testing connection…';el.style.color='var(--muted)';}
+    // Test: fetch a single SPY quote
+    const q=await MKT._fhQuote('SPY',key);
+    if(el){
+      if(q){
+        el.textContent=`✓ Finnhub connected — SPY: $${q.regularMarketPrice?.toFixed(2)||'?'} (${q.regularMarketChangePercent>=0?'+':''}${q.regularMarketChangePercent?.toFixed(2)||'0'}%)`;
+        el.style.color='var(--green)';
+        toast('Finnhub connected! Loading dashboard…','success');
+        CACHE.clear();
+        this.refreshAll();
+      } else {
+        el.textContent='✗ Could not connect — check your key at finnhub.io/dashboard or try again in a moment';
+        el.style.color='var(--red)';
+      }
+    }
+  },
+};
+
+// ────────────────────────────────────────────────────────────
+//  BOOT
+// ────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded',()=>app.init());
+
+// Close modals on backdrop click
+document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('open'); }));
+</script>
+</body>
+</html>
