@@ -1413,16 +1413,16 @@ const app = {
 
     if(statusEl) statusEl.textContent='';
     if(!Object.keys(S.quotes).length){
-      const hasTD=!!();
+      const hasTD = !!S.settings?.tdKey;
       grid.innerHTML=`<div style="grid-column:1/-1;" class="card">
         <div style="color:var(--yellow);font-size:13px;font-weight:600;margin-bottom:8px;">⚠️ Market data unavailable</div>
         <div style="font-size:12px;color:var(--muted);line-height:1.6;">
           ${hasTD
-            ? ` API key is saved but returned no data.<br>
-               This can happen when: the market is closed &amp; , the free plan rate limit () is hit, or the key has expired.<br><br>
-               <strong style="color:var(--text);">Try:</strong> Wait 60 seconds and click <strong style="color:var(--accent2);">Refresh</strong>. If the issue persists, verify your key at <a href="https://.com/account/api-keys" target="_blank" style="color:var(--accent2);">.com</a>.`
+            ? `TwelveData API key is saved but returned no data.<br>
+               This can happen when: the market is closed &amp; , the free plan rate limit is hit, or the key has expired.<br><br>
+               <strong style="color:var(--text);">Try:</strong> Wait 60 seconds and click <strong style="color:var(--accent2);">Refresh</strong>. If the issue persists, verify your key at <a href="https://twelvedata.com/account/api-keys" target="_blank" style="color:var(--accent2);">.com</a>.`
             : `No API key configured and Yahoo Finance CORS proxy is unavailable.<br><br>
-               <strong style="color:var(--text);">Fix:</strong> Go to <strong style="color:var(--text);">⚙ Settings</strong> → Market Data API → add a free key from <a href="https://twelvedata.com/register" target="_blank" style="color:var(--accent2);">.com</a>.`
+               <strong style="color:var(--text);">Fix:</strong> Go to <strong style="color:var(--text);">⚙ Settings</strong> → Market Data API → add a free key from <a href="https://twelvedata.com/register" target="_blank" style="color:var(--accent2);">twelvedata.com</a>.`
           }
         </div>
       </div>`;
@@ -1807,7 +1807,7 @@ const app = {
     const el=U.$('td-status');
     if(el){el.textContent='Testing…';el.style.color='var(--muted)';}
     // Test with a single quote
-    const res=await MKT.(['SPY'],key);
+    const res = await MKT.quotesTD(['SPY'], key);
     if(el){
       if(res){
         el.textContent=`✓ Connected — SPY: $${res.SPY?.regularMarketPrice?.toFixed(2)||'?'}`;
