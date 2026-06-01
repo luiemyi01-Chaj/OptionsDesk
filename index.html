@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OptionsDesk — Trading Research Platform</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Chart.js removed — replaced with static canvas renderer -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 
@@ -1075,73 +1075,165 @@ function toast(msg,type='info'){
 }
 
 // ────────────────────────────────────────────────────────────
-//  CHART HELPERS
+//  CHART HELPERS — pure static canvas, zero animation/motion
 // ────────────────────────────────────────────────────────────
 const CHS = {
-  destroy(id){if(S.charts[id]){S.charts[id].destroy();delete S.charts[id];}},
-  baseOpts(yMin=null,yMax=null){
-    return{
-      responsive:true,
-      animation:false,
-      animations:false,
-      transitions:{
-        active:{animation:{duration:0}},
-        resize:{animation:{duration:0}},
-        show:{animation:{duration:0}},
-        hide:{animation:{duration:0}},
-      },
-      hover:{animationDuration:0,mode:'index',intersect:false},
-      responsiveAnimationDuration:0,
-      plugins:{
-        legend:{labels:{color:'#4a6080',boxWidth:10,font:{size:10,family:'JetBrains Mono'}}},
-        tooltip:{animation:false,intersect:false,mode:'index'},
-      },
-      scales:{
-        x:{ticks:{color:'#4a6080',maxTicksLimit:8,font:{size:9,family:'JetBrains Mono'}},grid:{color:'rgba(30,45,66,0.5)'}},
-        y:{ticks:{color:'#4a6080',font:{size:9,family:'JetBrains Mono'}},grid:{color:'rgba(30,45,66,0.5)'},
-           ...(yMin!=null?{min:yMin}:{}),...(yMax!=null?{max:yMax}:{})}
+  destroy(id){ /* no-op — canvas redrawn in place */ },
+
+  _draw(canvasId, datasets, opts={}){
+    const canvas = U.$(canvasId);
+    if(!canvas) return;
+    const W = canvas.offsetWidth || 800;
+    const H = parseInt(canvas.getAttribute('height')) || 160;
+    canvas.width  = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,W,H);
+
+    const PAD = {top:12, right:16, bottom:32, left:52};
+    const cW = W - PAD.left - PAD.right;
+    const cH = H - PAD.top  - PAD.bottom;
+
+    // ── flatten all values to compute range ──
+    let allVals = [];
+    datasets.forEach(ds => ds.data.forEach(v => { if(v!=null && isFinite(v)) allVals.push(v); }));
+    let yMin = opts.yMin != null ? opts.yMin : Math.min(...allVals);
+    let yMax = opts.yMax != null ? opts.yMax : Math.max(...allVals);
+    if(yMin===yMax){ yMin -= 1; yMax += 1; }
+    const yPad = (yMax-yMin)*0.05;
+    if(opts.yMin == null) yMin -= yPad;
+    if(opts.yMax == null) yMax += yPad;
+
+    const labels = opts.labels || [];
+    const nPts   = Math.max(...datasets.map(d=>d.data.length));
+
+    const xPos = i => PAD.left + (i/(nPts-1||1))*cW;
+    const yPos = v => PAD.top  + (1-(v-yMin)/(yMax-yMin))*cH;
+
+    // ── grid ──
+    ctx.strokeStyle = 'rgba(30,45,66,0.6)';
+    ctx.lineWidth   = 1;
+    const yTicks = 5;
+    ctx.fillStyle   = '#4a6080';
+    ctx.font        = '9px JetBrains Mono, monospace';
+    ctx.textAlign   = 'right';
+    for(let i=0;i<=yTicks;i++){
+      const v   = yMin + (yMax-yMin)*(i/yTicks);
+      const y   = yPos(v);
+      ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W-PAD.right, y);
+      ctx.stroke();
+      ctx.fillText(v.toFixed(v>100?0:v>1?2:3), PAD.left-4, y+3);
+    }
+
+    // ── x-axis labels (show ~7 evenly spaced) ──
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#4a6080';
+    const step = Math.max(1, Math.floor(nPts/7));
+    for(let i=0;i<nPts;i+=step){
+      if(labels[i]){
+        ctx.fillText(labels[i], xPos(i), H-PAD.bottom+14);
       }
-    };
-  },
-  renderPrice(labels,prices,bb){
-    this.destroy('price');
-    const ctx=U.$('price-chart');if(!ctx)return;
-    S.charts.price=new Chart(ctx,{
-      type:'line',
-      data:{labels,datasets:[
-        {label:'Price',data:prices,borderColor:'#3b82f6',borderWidth:2,pointRadius:0,tension:0.1,fill:false,order:0},
-        {label:'BB Upper',data:bb.up,borderColor:'rgba(74,96,128,0.5)',borderWidth:1,borderDash:[4,4],pointRadius:0,fill:'+1',backgroundColor:'rgba(59,130,246,0.04)',order:1},
-        {label:'SMA20',data:bb.mid,borderColor:'rgba(100,120,150,0.6)',borderWidth:1,borderDash:[6,4],pointRadius:0,order:2},
-        {label:'BB Lower',data:bb.lo,borderColor:'rgba(74,96,128,0.5)',borderWidth:1,borderDash:[4,4],pointRadius:0,order:3},
-      ]},
-      options:this.baseOpts(),
+    }
+
+    // ── datasets ──
+    datasets.forEach(ds => {
+      if(!ds.data || !ds.data.length) return;
+      const isBar  = ds.type === 'bar';
+      const isDash = ds.dash;
+      const color  = ds.color || '#3b82f6';
+
+      if(isBar){
+        const barW = Math.max(1, cW/nPts - 1);
+        ds.data.forEach((v,i) => {
+          if(v==null || !isFinite(v)) return;
+          const x   = xPos(i);
+          const y0  = yPos(0);
+          const y1  = yPos(v);
+          ctx.fillStyle = v >= 0 ? 'rgba(16,185,129,0.55)' : 'rgba(239,68,68,0.55)';
+          ctx.fillRect(x - barW/2, Math.min(y0,y1), barW, Math.abs(y0-y1));
+        });
+        return;
+      }
+
+      // Fill area (e.g. BB band)
+      if(ds.fillTo != null){
+        const other = datasets[ds.fillTo];
+        if(other){
+          ctx.beginPath();
+          let started = false;
+          ds.data.forEach((v,i) => {
+            if(v==null || !isFinite(v)) return;
+            if(!started){ ctx.moveTo(xPos(i), yPos(v)); started=true; }
+            else ctx.lineTo(xPos(i), yPos(v));
+          });
+          for(let i=other.data.length-1;i>=0;i--){
+            const v=other.data[i];
+            if(v!=null && isFinite(v)) ctx.lineTo(xPos(i), yPos(v));
+          }
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(59,130,246,0.05)';
+          ctx.fill();
+        }
+      }
+
+      // Line
+      ctx.beginPath();
+      ctx.strokeStyle = color;
+      ctx.lineWidth   = ds.width || 1.5;
+      if(isDash) ctx.setLineDash(isDash); else ctx.setLineDash([]);
+      let moved = false;
+      ds.data.forEach((v,i) => {
+        if(v==null || !isFinite(v)){ moved=false; return; }
+        if(!moved){ ctx.moveTo(xPos(i), yPos(v)); moved=true; }
+        else        ctx.lineTo(xPos(i), yPos(v));
+      });
+      ctx.stroke();
+      ctx.setLineDash([]);
+    });
+
+    // ── legend ──
+    ctx.textAlign = 'left';
+    ctx.font = '9px JetBrains Mono, monospace';
+    let lx = PAD.left;
+    datasets.forEach(ds => {
+      if(!ds.label || ds.noLegend) return;
+      ctx.fillStyle = ds.type==='bar'
+        ? 'rgba(16,185,129,0.8)'
+        : (ds.color || '#3b82f6');
+      ctx.fillRect(lx, 3, 8, 8);
+      ctx.fillStyle = '#4a6080';
+      ctx.fillText(ds.label, lx+11, 11);
+      lx += ctx.measureText(ds.label).width + 24;
     });
   },
-  renderRSI(labels,rsi){
-    this.destroy('rsi');
-    const ctx=U.$('rsi-chart');if(!ctx)return;
-    S.charts.rsi=new Chart(ctx,{
-      type:'line',
-      data:{labels,datasets:[
-        {label:'RSI',data:rsi,borderColor:'#8b5cf6',borderWidth:2,pointRadius:0,tension:0.1},
-        {label:'70',data:labels.map(()=>70),borderColor:'rgba(239,68,68,0.4)',borderWidth:1,borderDash:[4,4],pointRadius:0},
-        {label:'30',data:labels.map(()=>30),borderColor:'rgba(16,185,129,0.4)',borderWidth:1,borderDash:[4,4],pointRadius:0},
-      ]},
-      options:this.baseOpts(0,100),
-    });
+
+  renderPrice(labels, prices, bb){
+    this._draw('price-chart', [
+      { label:'BB Upper', data:bb.up,  color:'rgba(74,96,128,0.45)', width:1, dash:[4,4] },
+      { label:'BB Lower', data:bb.lo,  color:'rgba(74,96,128,0.45)', width:1, dash:[4,4], fillTo:0 },
+      { label:'SMA20',    data:bb.mid, color:'rgba(100,120,150,0.6)', width:1, dash:[6,4] },
+      { label:'Price',    data:prices, color:'#3b82f6', width:2 },
+    ], { labels });
   },
-  renderMACD(labels,ml,sl,hist){
-    this.destroy('macd');
-    const ctx=U.$('macd-chart');if(!ctx)return;
-    S.charts.macd=new Chart(ctx,{
-      data:{labels,datasets:[
-        {type:'bar',label:'Histogram',data:hist,backgroundColor:hist.map(v=>v!=null?(v>=0?'rgba(16,185,129,0.5)':'rgba(239,68,68,0.5)'):null),borderWidth:0,order:2},
-        {type:'line',label:'MACD',data:ml,borderColor:'#3b82f6',borderWidth:1.5,pointRadius:0,tension:0.1,order:1},
-        {type:'line',label:'Signal',data:sl,borderColor:'#f97316',borderWidth:1.5,borderDash:[3,3],pointRadius:0,tension:0.1,order:0},
-      ]},
-      options:this.baseOpts(),
-    });
+
+  renderRSI(labels, rsi){
+    const n = rsi.length;
+    this._draw('rsi-chart', [
+      { label:'70',  data:Array(n).fill(70), color:'rgba(239,68,68,0.35)',    width:1, dash:[4,4], noLegend:true },
+      { label:'30',  data:Array(n).fill(30), color:'rgba(16,185,129,0.35)',   width:1, dash:[4,4], noLegend:true },
+      { label:'RSI', data:rsi,               color:'#8b5cf6', width:2 },
+    ], { labels, yMin:0, yMax:100 });
   },
+
+  renderMACD(labels, ml, sl, hist){
+    this._draw('macd-chart', [
+      { label:'Histogram', data:hist, type:'bar' },
+      { label:'MACD',      data:ml,  color:'#3b82f6', width:1.5 },
+      { label:'Signal',    data:sl,  color:'#f97316', width:1.5, dash:[3,3] },
+    ], { labels });
+  },
+};
+
 };
 
 // ────────────────────────────────────────────────────────────
