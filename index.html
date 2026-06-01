@@ -370,16 +370,16 @@
     <div style="display:flex;flex-direction:column;gap:12px;">
       <div class="card">
         <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Price + Bollinger Bands (20,2)</div>
-        <div class="chart-wrap"><canvas id="price-chart" height="180"></canvas></div>
+        <div class="chart-wrap"><img id="price-chart" style="width:100%;height:180px;display:block;image-rendering:crisp-edges;" alt="Price chart"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div class="card">
           <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">RSI (14)</div>
-          <div class="chart-wrap"><canvas id="rsi-chart" height="120"></canvas></div>
+          <div class="chart-wrap"><img id="rsi-chart" style="width:100%;height:120px;display:block;image-rendering:crisp-edges;" alt="RSI chart"></div>
         </div>
         <div class="card">
           <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">MACD (12,26,9)</div>
-          <div class="chart-wrap"><canvas id="macd-chart" height="120"></canvas></div>
+          <div class="chart-wrap"><img id="macd-chart" style="width:100%;height:120px;display:block;image-rendering:crisp-edges;" alt="MACD chart"></div>
         </div>
       </div>
     </div>
@@ -1080,15 +1080,16 @@ function toast(msg,type='info'){
 const CHS = {
   destroy(id){ /* no-op — canvas redrawn in place */ },
 
-  _draw(canvasId, datasets, opts={}){
-    const canvas = U.$(canvasId);
-    if(!canvas) return;
-    const W = canvas.offsetWidth || 800;
-    const H = parseInt(canvas.getAttribute('height')) || 160;
+  _draw(imgId, datasets, opts={}){
+    // Render to an offscreen canvas then freeze as a static PNG in an <img> — nothing can animate
+    const W = 900;
+    const H = opts.height || 160;
+    const canvas = document.createElement('canvas');
     canvas.width  = W;
     canvas.height = H;
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle = '#1e2a3d';
+    ctx.fillRect(0, 0, W, H);
 
     const PAD = {top:12, right:16, bottom:32, left:52};
     const cW = W - PAD.left - PAD.right;
@@ -1205,6 +1206,10 @@ const CHS = {
       ctx.fillText(ds.label, lx+11, 11);
       lx += ctx.measureText(ds.label).width + 24;
     });
+
+    // ── freeze as static image — no more canvas, no redraws ──
+    const img = U.$(imgId);
+    if(img) img.src = canvas.toDataURL('image/png');
   },
 
   renderPrice(labels, prices, bb){
@@ -1213,7 +1218,7 @@ const CHS = {
       { label:'BB Lower', data:bb.lo,  color:'rgba(74,96,128,0.45)', width:1, dash:[4,4], fillTo:0 },
       { label:'SMA20',    data:bb.mid, color:'rgba(100,120,150,0.6)', width:1, dash:[6,4] },
       { label:'Price',    data:prices, color:'#3b82f6', width:2 },
-    ], { labels });
+    ], { labels, height:180 });
   },
 
   renderRSI(labels, rsi){
@@ -1222,7 +1227,7 @@ const CHS = {
       { label:'70',  data:Array(n).fill(70), color:'rgba(239,68,68,0.35)',    width:1, dash:[4,4], noLegend:true },
       { label:'30',  data:Array(n).fill(30), color:'rgba(16,185,129,0.35)',   width:1, dash:[4,4], noLegend:true },
       { label:'RSI', data:rsi,               color:'#8b5cf6', width:2 },
-    ], { labels, yMin:0, yMax:100 });
+    ], { labels, yMin:0, yMax:100, height:120 });
   },
 
   renderMACD(labels, ml, sl, hist){
