@@ -409,7 +409,7 @@
         <div>
           <span class="label">Symbol</span>
           <div style="display:flex;gap:6px;">
-            <input id="opt-symbol" type="text" style="width:90px;text-transform:uppercase;" placeholder="NVDA" onkeydown="if(event.key==='Enter')app.loadOptionsChain()">
+            <input id="opt-symbol" type="text" style="width:110px;" placeholder="NVDA or TD.TO" onkeydown="if(event.key==='Enter')app.loadOptionsChain()">
             <button class="btn btn-blue" onclick="app.loadOptionsChain()">Load Chain</button>
           </div>
         </div>
@@ -459,7 +459,7 @@
     <div class="card card-sm" style="margin-bottom:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
       <div>
         <span class="label">Symbol</span>
-        <input id="tech-symbol" type="text" style="width:90px;text-transform:uppercase;" placeholder="NVDA" onkeydown="if(event.key==='Enter')app.loadTechnical()">
+        <input id="tech-symbol" type="text" style="width:110px;" placeholder="NVDA or TD.TO" onkeydown="if(event.key==='Enter')app.loadTechnical()">
       </div>
       <div>
         <span class="label">Period</span>
@@ -522,7 +522,7 @@
     <div class="card" style="margin-bottom:14px;">
       <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:12px;">➕ Log New Trade</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:8px;">
-        <div><span class="label">Symbol</span><input id="t-symbol" type="text" style="width:100%;text-transform:uppercase;" placeholder="NVDA"></div>
+        <div><span class="label">Symbol</span><input id="t-symbol" type="text" style="width:100%;" placeholder="NVDA or TD.TO"></div>
         <div><span class="label">Strategy</span>
           <select id="t-type" style="width:100%;">
             <option>Long Call</option><option>Long Put</option>
@@ -585,10 +585,28 @@
         <div style="font-size:12px;font-weight:600;margin-bottom:12px;">📋 Watchlist</div>
         <div id="settings-wl" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
         <div style="display:flex;gap:6px;">
-          <input id="s-add-ticker" type="text" style="flex:1;text-transform:uppercase;" placeholder="Enter symbol(s), comma-separated" onkeydown="if(event.key==='Enter')app.addTickersFromSettings()">
+          <input id="s-add-ticker" type="text" style="flex:1;text-transform:uppercase;" placeholder="NVDA, TD.TO, ENB.TO…" onkeydown="if(event.key==='Enter')app.addTickersFromSettings()">
           <button class="btn btn-blue" onclick="app.addTickersFromSettings()">Add</button>
         </div>
-        <div style="margin-top:8px;font-size:10px;color:var(--muted);">🇨🇦 Canadian banks: TD · RY · BNS · BMO · CM (US-listed)</div>
+        <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px;">
+          <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">🇨🇦 Quick-add TSX names</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;">
+            ${[
+              ['TD.TO','Banks'],['RY.TO','Banks'],['BNS.TO','Banks'],['BMO.TO','Banks'],['CM.TO','Banks'],['NA.TO','Banks'],
+              ['ENB.TO','Energy'],['CNQ.TO','Energy'],['SU.TO','Energy'],['CVE.TO','Energy'],['TRP.TO','Energy'],
+              ['CNR.TO','Rail'],['CP.TO','Rail'],
+              ['SHOP.TO','Tech'],['CSU.TO','Tech'],['OTEX.TO','Tech'],
+              ['BCE.TO','Telco'],['T.TO','Telco'],['RCI.B.TO','Telco'],
+              ['ABX.TO','Mining'],['AEM.TO','Mining'],['WPM.TO','Mining'],
+              ['MFC.TO','Insurance'],['SLF.TO','Insurance'],['POW.TO','Insurance'],
+              ['XIU.TO','ETF'],['XIC.TO','ETF'],['ZEB.TO','ETF'],
+            ].map(([s, sector]) => `<button onclick="app.addTicker('${s}')" title="${s} — ${sector}" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:3px 8px;font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--text);cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'">${s.replace('.TO','')}<span style="color:var(--muted);font-size:9px;margin-left:3px;">.TO</span></button>`).join('')}
+          </div>
+          <div style="margin-top:8px;font-size:10px;color:var(--muted);line-height:1.6;">
+            🇺🇸 US: enter symbol as-is — <code style="color:var(--cyan);">NVDA</code> · <code style="color:var(--cyan);">SPY</code><br>
+            🇨🇦 TSX: append <code style="color:var(--cyan);">.TO</code> &nbsp;·&nbsp; TSXV: <code style="color:var(--cyan);">.V</code> &nbsp;·&nbsp; CSE: <code style="color:var(--cyan);">.CN</code>
+          </div>
+        </div>
       </div>
       <div class="card">
         <div style="font-size:12px;font-weight:600;margin-bottom:4px;">📡 Market Data API</div>
@@ -711,8 +729,13 @@
 <div id="modal-add-ticker" class="modal">
   <div class="modal-box" style="max-width:360px;">
     <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Add Tickers to Watchlist</div>
-    <input id="m-ticker-input" type="text" style="width:100%;margin-bottom:8px;text-transform:uppercase;" placeholder="NVDA, AMD, SPY…" onkeydown="if(event.key==='Enter')app.confirmAddTicker()">
-    <div style="font-size:10px;color:var(--muted);margin-bottom:12px;">Separate multiple tickers with commas.</div>
+    <input id="m-ticker-input" type="text" style="width:100%;margin-bottom:8px;" placeholder="NVDA, TD.TO, ENB.TO, SPY…" onkeydown="if(event.key==='Enter')app.confirmAddTicker()">
+    <div style="font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
+      Separate multiple tickers with commas.<br>
+      🇺🇸 US: <code style="color:var(--cyan);">NVDA, SPY, AMD</code><br>
+      🇨🇦 TSX: append <strong style="color:var(--accent2);">.TO</strong> — <code style="color:var(--cyan);">TD.TO, RY.TO, ENB.TO, SU.TO</code><br>
+      TSXV: <code style="color:var(--cyan);">.V</code> &nbsp;·&nbsp; CSE: <code style="color:var(--cyan);">.CN</code>
+    </div>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-blue" style="flex:1;" onclick="app.confirmAddTicker()">Add</button>
       <button class="btn btn-ghost" style="flex:1;" onclick="app.closeModal('modal-add-ticker')">Cancel</button>
@@ -747,7 +770,60 @@ const CFG = {
   YF1:     'https://query1.finance.yahoo.com',
   YF2:     'https://query2.finance.yahoo.com',
   RFR:     0.053,
-  DEFAULT_WL: ['NVDA','AMD','GOOGL','SPY','TD','RY','BNS','BMO','CM'],
+  // Default watchlist: US tickers as-is, TSX tickers with .TO suffix
+  DEFAULT_WL: ['NVDA','AMD','GOOGL','SPY','TD.TO','RY.TO','BNS.TO','BMO.TO','CM.TO','ENB.TO','CNQ.TO','SU.TO'],
+};
+
+// ────────────────────────────────────────────────────────────
+//  TSX / EXCHANGE UTILITIES
+//  TSX tickers use the .TO suffix in both Finnhub and Yahoo Finance.
+//  .V  = TSX Venture Exchange (junior/small-cap)
+//  .CN = Canadian Securities Exchange
+//  Options on TSX stocks are traded at MX (Montréal Exchange).
+//  Note: TSX equity options are much less liquid than US options;
+//  many TSX names have no listed options at all.
+// ────────────────────────────────────────────────────────────
+const TSX = {
+  // Return true if sym is a Canadian exchange ticker
+  isCanadian: sym => /\.(TO|V|CN|NE)$/i.test(sym),
+
+  // Normalise user input → proper suffix form.
+  // Accepts: "TD", "TD.TO", "td.to", "TD:CA" → "TD.TO"
+  // Passes through US symbols unchanged.
+  normalise(raw) {
+    const s = raw.trim().toUpperCase();
+    // Strip trailing exchange codes sometimes pasted by users
+    const stripped = s.replace(/:CA$|:TSX$|:TSV$/, '');
+    // Already has a recognised Canadian suffix
+    if (/\.(TO|V|CN|NE)$/.test(stripped)) return stripped;
+    // Explicit .TO request
+    if (stripped.endsWith('.TO')) return stripped;
+    return stripped; // US symbol — leave alone
+  },
+
+  // Human-readable exchange label for UI
+  exchangeLabel(sym) {
+    if (/\.TO$/i.test(sym))  return 'TSX';
+    if (/\.V$/i.test(sym))   return 'TSXV';
+    if (/\.CN$/i.test(sym))  return 'CSE';
+    if (/\.NE$/i.test(sym))  return 'NEO';
+    return 'US';
+  },
+
+  // Display name stripped of suffix for compact UI (e.g. "TD.TO" → "TD")
+  displaySym(sym) { return sym.replace(/\.(TO|V|CN|NE)$/i, ''); },
+
+  // Yahoo Finance uses the .TO suffix directly; Finnhub uses it too.
+  // For options: Yahoo supports TSX options via the same v7 endpoint.
+  // MDA (Market Data App) does NOT support TSX options on free tier.
+  fhSym: sym => sym,   // Finnhub accepts TD.TO natively
+  yfSym: sym => sym,   // Yahoo Finance accepts TD.TO natively
+
+  // CAD/USD note for UI
+  currencyNote(sym) {
+    if (TSX.isCanadian(sym)) return 'CAD';
+    return 'USD';
+  },
 };
 
 const S = {
@@ -1277,8 +1353,16 @@ const MORNING = {
     const btn = U.$('mb-run-btn');
     btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;"></div> Scanning…';
 
-    // 1. Market context: fetch SPY, QQQ, VIX surrogate (^VIX → use VIXY as proxy)
-    const ctxSyms = ['SPY', 'QQQ', 'IWM', 'VIXY'];
+    // 1. Market context: fetch US + Canadian index proxies
+    // XIU.TO = iShares S&P/TSX 60 ETF — the TSX benchmark proxy
+    const ctxSyms = ['SPY', 'QQQ', 'IWM', 'VIXY', 'XIU.TO'];
+    const ctxLabels = {
+      'SPY':    'S&P 500 (SPY)',
+      'QQQ':    'Nasdaq (QQQ)',
+      'IWM':    'Russell 2K (IWM)',
+      'VIXY':   'VIX Proxy (VIXY)',
+      'XIU.TO': 'S&P/TSX 60 (XIU)',
+    };
     const ctxQuotes = {};
     for (const s of ctxSyms) {
       this.log(s, 'wait', 'Fetching market context…');
@@ -1287,7 +1371,7 @@ const MORNING = {
       this.log(s, q ? 'done' : 'fail', q ? `${U.fp(q.regularMarketPrice)} (${q.regularMarketChangePercent >= 0 ? '+' : ''}${q.regularMarketChangePercent.toFixed(2)}%)` : 'No data');
       await new Promise(r => setTimeout(r, 350));
     }
-    this._renderMarketContext(ctxQuotes);
+    this._renderMarketContext(ctxQuotes, ctxLabels);
 
     // 2. Scan watchlist tickers
     const syms = S.watchlist.slice(0, 12); // cap at 12 to respect rate limits
@@ -1321,17 +1405,22 @@ const MORNING = {
     toast(`Morning brief complete — ${this._results.length} tickers scanned`, 'success');
   },
 
-  _renderMarketContext(quotes) {
+  _renderMarketContext(quotes, labelMap) {
     const grid = U.$('mb-context-grid');
     const ctx  = U.$('mb-market-context');
     if (!grid || !Object.keys(quotes).length) return;
-    const labels = { SPY: 'S&P 500 (SPY)', QQQ: 'Nasdaq (QQQ)', IWM: 'Russell 2K (IWM)', VIXY: 'VIX Proxy (VIXY)' };
     grid.innerHTML = Object.entries(quotes).map(([sym, q]) => {
       const chg = q.regularMarketChangePercent || 0;
       const cls = chg >= 0 ? 'up' : 'down';
       const bdr = Math.abs(chg) > 2 ? (chg > 0 ? 'rgba(52,211,153,0.3)' : 'rgba(248,113,113,0.3)') : 'var(--border)';
+      const isTSX = TSX.isCanadian(sym);
+      const ccy = TSX.currencyNote(sym);
+      const label = labelMap?.[sym] || sym;
       return `<div class="stat-box" style="border-color:${bdr};">
-        <div class="stat-label">${labels[sym] || sym}</div>
+        <div class="stat-label" style="display:flex;align-items:center;gap:4px;">
+          ${label}
+          ${isTSX ? `<span class="badge badge-blue" style="font-size:8px;padding:1px 4px;">CAD</span>` : ''}
+        </div>
         <div class="stat-value mono" style="font-size:18px;">${U.fp(q.regularMarketPrice)}</div>
         <div class="mono ${cls}" style="font-size:11px;margin-top:4px;">${chg >= 0 ? '▲' : '▼'} ${Math.abs(chg).toFixed(2)}%</div>
       </div>`;
@@ -1358,8 +1447,13 @@ const MORNING = {
       const macdTxt = r.macdBull ? '<span class="up">Bull</span>' : '<span class="down">Bear</span>';
       const bbTxt = r.bbPct < 20 ? `<span class="up">${r.bbPct}%</span>` : r.bbPct > 80 ? `<span class="down">${r.bbPct}%</span>` : `<span class="neutral">${r.bbPct}%</span>`;
       const trendTxt = (r.abv50 && r.abv20) ? '<span class="up">↑</span>' : (!r.abv50 && !r.abv20) ? '<span class="down">↓</span>' : '<span class="neutral">~</span>';
+      const isTSX = TSX.isCanadian(r.sym);
+      const exLabel = TSX.exchangeLabel(r.sym);
       return `<div class="mb-ticker-row ${rowCls}" onclick="app.quickOptions('${r.sym}')" title="Click to open ${r.sym} options chain">
-        <div style="font-family:var(--font-mono);font-weight:700;font-size:13px;">${r.sym}</div>
+        <div>
+          <div style="font-family:var(--font-mono);font-weight:700;font-size:13px;">${TSX.displaySym(r.sym)}</div>
+          <span class="badge ${isTSX ? 'badge-blue' : 'badge-gray'}" style="font-size:8px;padding:1px 4px;margin-top:2px;">${exLabel}</span>
+        </div>
         <div class="mono">${U.fp(r.lPrice)}</div>
         <div class="mono ${chgCls}">${r.chgPct >= 0 ? '+' : ''}${r.chgPct.toFixed(2)}%</div>
         <div>
@@ -1390,10 +1484,14 @@ const MORNING = {
 
     grid.innerHTML = opps.map(r => {
       const isBull = r.score > 0;
+      const isTSX = TSX.isCanadian(r.sym);
+      const exLabel = TSX.exchangeLabel(r.sym);
       const stratLabel  = isBull ? 'Long Call Setup' : 'Long Put Setup';
-      const stratDetail = isBull
-        ? 'Look for ATM or slightly OTM calls, 30–60 DTE'
-        : 'Look for ATM or slightly OTM puts, 30–60 DTE';
+      const stratDetail = isTSX
+        ? (isBull ? 'MX ATM/OTM calls, 30–60 DTE — confirm open interest before entry'
+                  : 'MX ATM/OTM puts, 30–60 DTE — confirm open interest before entry')
+        : (isBull ? 'Look for ATM or slightly OTM calls, 30–60 DTE'
+                  : 'Look for ATM or slightly OTM puts, 30–60 DTE');
       const sigList = r.signals.map(s =>
         `<div style="font-size:10px;display:flex;align-items:center;gap:4px;padding:2px 0;">
           <span style="${s.type === 'bull' ? 'color:var(--green)' : s.type === 'bear' ? 'color:var(--red)' : 'color:var(--muted)'};">
@@ -1405,13 +1503,17 @@ const MORNING = {
       return `<div class="mb-opp-card ${isBull ? 'call-opp' : 'put-opp'}" onclick="app.quickOptions('${r.sym}')">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
           <div>
-            <div style="font-family:var(--font-mono);font-size:14px;font-weight:700;">${r.sym}</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:1px;">${U.fp(r.lPrice)}</div>
+            <div style="display:flex;align-items:center;gap:5px;">
+              <div style="font-family:var(--font-mono);font-size:14px;font-weight:700;">${TSX.displaySym(r.sym)}</div>
+              <span class="badge ${isTSX ? 'badge-blue' : 'badge-gray'}" style="font-size:8px;padding:1px 4px;">${exLabel}</span>
+            </div>
+            <div style="font-size:10px;color:var(--muted);margin-top:1px;">${U.fp(r.lPrice)} ${TSX.currencyNote(r.sym)}</div>
           </div>
           <span class="badge ${isBull ? 'badge-green' : 'badge-red'}">${isBull ? '📈 CALL' : '📉 PUT'}</span>
         </div>
         <div style="font-size:11px;font-weight:600;color:${isBull ? 'var(--green)' : 'var(--red)'};margin-bottom:6px;">${stratLabel}</div>
         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;">${stratDetail}</div>
+        ${isTSX ? `<div style="font-size:10px;color:var(--yellow);margin-bottom:6px;">⚠ TSX options — verify liquidity at Montréal Exchange</div>` : ''}
         <div style="border-top:1px solid var(--border);padding-top:6px;">${sigList}</div>
         <div style="margin-top:8px;font-size:10px;color:var(--accent2);">→ Open Options Chain</div>
       </div>`;
@@ -1538,11 +1640,18 @@ function renderWLCard(sym, q) {
   const hi = q?.fiftyTwoWeekHigh, lo = q?.fiftyTwoWeekLow, vol = q?.regularMarketVolume;
   const isUp = (chg || 0) >= 0;
   const pctFrom = (price && hi && lo) ? Math.round((price - lo) / (hi - lo) * 100) : null;
-  const name = (q?.shortName || sym).slice(0, 18);
+  const name = (q?.shortName || TSX.displaySym(sym)).slice(0, 18);
+  const isTSX = TSX.isCanadian(sym);
+  const exLabel = TSX.exchangeLabel(sym);
+  const ccy = TSX.currencyNote(sym);
   return `<div class="wl-card ${price ? (isUp ? 'up-card' : 'down-card') : ''}" onclick="app.quickOptions('${sym}')">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
       <div>
-        <div style="font-family:var(--font-mono);font-size:13px;font-weight:700;">${sym}</div>
+        <div style="display:flex;align-items:center;gap:5px;">
+          <div style="font-family:var(--font-mono);font-size:13px;font-weight:700;">${TSX.displaySym(sym)}</div>
+          <span class="badge ${isTSX ? 'badge-blue' : 'badge-gray'}" style="font-size:9px;padding:1px 5px;">${exLabel}</span>
+          <span class="badge badge-gray" style="font-size:9px;padding:1px 5px;">${ccy}</span>
+        </div>
         <div style="font-size:10px;color:var(--muted);margin-top:1px;">${name}</div>
       </div>
       <button onclick="event.stopPropagation();app.removeTicker('${sym}')" style="color:var(--muted);background:none;border:none;cursor:pointer;font-size:12px;padding:2px 4px;">✕</button>
@@ -1557,7 +1666,7 @@ function renderWLCard(sym, q) {
         <div class="progress-track"><div class="progress-fill" style="width:${pctFrom}%;background:${isUp ? 'var(--green)' : 'var(--red)'};"></div></div>
         <div style="text-align:center;font-size:9px;color:var(--muted);margin-top:1px;">${pctFrom}% of 52W range</div>
       </div>` : ''}
-      <div style="font-size:10px;color:var(--accent2);margin-top:8px;">→ Options Chain</div>
+      <div style="font-size:10px;color:var(--accent2);margin-top:8px;">${isTSX ? '→ MX Options Chain' : '→ Options Chain'}</div>
     ` : `<div style="color:var(--muted);font-size:11px;padding:12px 0;">No data</div>`}
   </div>`;
 }
@@ -1691,11 +1800,16 @@ function renderTradeStats() {
 function renderSettingsWL() {
   const el = U.$('settings-wl');
   if (!el) return;
-  el.innerHTML = S.watchlist.map(s => `
+  el.innerHTML = S.watchlist.map(s => {
+    const isTSX = TSX.isCanadian(s);
+    const exLabel = TSX.exchangeLabel(s);
+    return `
     <div style="display:flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:3px 8px;">
-      <span style="font-family:var(--font-mono);font-size:11px;font-weight:600;">${s}</span>
+      <span style="font-family:var(--font-mono);font-size:11px;font-weight:600;">${TSX.displaySym(s)}</span>
+      <span class="badge ${isTSX ? 'badge-blue' : 'badge-gray'}" style="font-size:8px;padding:1px 4px;">${exLabel}</span>
       <button onclick="app.removeTicker('${s}')" style="color:var(--muted);background:none;border:none;cursor:pointer;font-size:11px;line-height:1;">✕</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1799,8 +1913,10 @@ const app = {
   },
 
   async loadOptionsChain() {
-    const sym = U.$('opt-symbol')?.value?.trim().toUpperCase();
-    if (!sym) { toast('Enter a symbol first', 'warn'); return; }
+    const raw = U.$('opt-symbol')?.value?.trim();
+    if (!raw) { toast('Enter a symbol first', 'warn'); return; }
+    const sym = TSX.normalise(raw);
+    if (U.$('opt-symbol')) U.$('opt-symbol').value = sym;
     S.curOptSym = sym;
     const container = U.$('opt-chain-container');
     container.innerHTML = `<div class="loading-block"><div class="spinner"></div><span>Loading ${sym} options chain…</span></div>`;
@@ -1811,10 +1927,13 @@ const app = {
     ]);
     if (quoteRes) Object.assign(S.quotes, quoteRes);
     if (!chain) {
+      const isTSX = TSX.isCanadian(sym);
       container.innerHTML = `<div class="loading-block" style="flex-direction:column;gap:10px;">
         <span style="color:var(--red);font-weight:600;">⚠ Could not load options chain for ${sym}</span>
-        <div style="font-size:11px;color:var(--muted);line-height:1.7;max-width:480px;text-align:left;">
+        <div style="font-size:11px;color:var(--muted);line-height:1.7;max-width:520px;text-align:left;">
+          ${isTSX ? `<div style="color:var(--yellow);margin-bottom:8px;">📋 <strong style="color:var(--text);">TSX Note:</strong> Options on TSX stocks trade at the <strong style="color:var(--text);">Montréal Exchange (MX)</strong> and are less liquid than US options. Many TSX names have no listed options. Yahoo Finance and Market Data App have limited TSX option chain coverage on free tiers.</div>` : ''}
           Configure your Cloudflare Worker URL or Market Data App token in ⚙ Settings to enable options chains.
+          ${isTSX ? '<br>For TSX options, the Cloudflare Worker → Yahoo Finance path gives the best results.' : ''}
         </div>
       </div>`;
       return;
@@ -1831,14 +1950,20 @@ const app = {
     }
     const q = chain.quote || {};
     const inf = U.$('opt-underlying');
+    const isTSX = TSX.isCanadian(sym);
+    const exLabel = TSX.exchangeLabel(sym);
+    const ccy = TSX.currencyNote(sym);
     if (inf) {
       inf.style.display = 'block';
       U.$('opt-underlying-content').innerHTML = [
         `<div><span style="color:var(--muted);">Symbol</span> <strong style="margin-left:4px;">${sym}</strong></div>`,
+        `<div><span style="color:var(--muted);">Exchange</span> <span class="badge ${isTSX ? 'badge-blue' : 'badge-gray'}" style="margin-left:4px;">${exLabel}</span></div>`,
+        `<div><span style="color:var(--muted);">Currency</span> <span class="badge badge-gray" style="margin-left:4px;">${ccy}</span></div>`,
         `<div><span style="color:var(--muted);">Price</span> <strong class="mono" style="margin-left:4px;">${U.fp(q.regularMarketPrice)}</strong></div>`,
         `<div><span style="color:var(--muted);">Change</span> <span class="${U.clr(q.regularMarketChange)} mono" style="margin-left:4px;">${U.pp(q.regularMarketChangePercent)}</span></div>`,
         `<div><span style="color:var(--muted);">Volume</span> <span class="mono" style="margin-left:4px;">${U.fn(q.regularMarketVolume)}</span></div>`,
         `<div><span style="color:var(--muted);">52W</span> <span class="mono" style="margin-left:4px;">${U.fp(q.fiftyTwoWeekLow)} – ${U.fp(q.fiftyTwoWeekHigh)}</span></div>`,
+        isTSX ? `<div style="font-size:10px;color:var(--muted);align-self:center;">MX options only — lower liquidity expected</div>` : '',
       ].join('');
     }
     this.renderOptionsChain();
@@ -1874,9 +1999,11 @@ const app = {
   },
 
   async loadTechnical() {
-    const sym = U.$('tech-symbol')?.value?.trim().toUpperCase();
+    const raw = U.$('tech-symbol')?.value?.trim();
     const period = U.$('tech-period')?.value || '3mo';
-    if (!sym) { toast('Enter a symbol', 'warn'); return; }
+    if (!raw) { toast('Enter a symbol', 'warn'); return; }
+    const sym = TSX.normalise(raw);
+    if (U.$('tech-symbol')) U.$('tech-symbol').value = sym;
     S.curTechSym = sym;
     if (U.$('tech-loading')) U.$('tech-loading').style.display = 'flex';
     U.$('tech-signals')?.style && (U.$('tech-signals').style.display = 'none');
@@ -1953,7 +2080,8 @@ const app = {
   },
 
   addTrade() {
-    const sym = U.$('t-symbol')?.value?.toUpperCase()?.trim();
+    const rawSym = U.$('t-symbol')?.value?.trim();
+    const sym = TSX.normalise(rawSym || '');
     const entry = parseFloat(U.$('t-entry')?.value);
     if (!sym || !entry) { toast('Symbol and entry price required', 'warn'); return; }
     const trade = {
@@ -2059,11 +2187,12 @@ const app = {
   },
 
   addTicker(sym) {
-    sym = sym.toUpperCase().trim(); if (!sym) return;
+    sym = TSX.normalise(sym); if (!sym) return;
     if (S.watchlist.includes(sym)) { toast(sym + ' already in watchlist', 'warn'); return; }
     S.watchlist.push(sym); DB.s('watchlist', S.watchlist);
     renderSettingsWL(); this.refreshAll();
-    toast(sym + ' added', 'success');
+    const label = TSX.isCanadian(sym) ? `${sym} (TSX — CAD)` : sym;
+    toast(label + ' added', 'success');
   },
 
   removeTicker(sym) {
@@ -2079,12 +2208,12 @@ const app = {
   },
 
   confirmAddTicker() {
-    (U.$('m-ticker-input')?.value || '').split(',').forEach(s => this.addTicker(s.trim()));
+    (U.$('m-ticker-input')?.value || '').split(',').forEach(s => this.addTicker(TSX.normalise(s)));
     this.closeModal('modal-add-ticker');
   },
 
   addTickersFromSettings() {
-    (U.$('s-add-ticker')?.value || '').split(',').forEach(s => this.addTicker(s.trim()));
+    (U.$('s-add-ticker')?.value || '').split(',').forEach(s => this.addTicker(TSX.normalise(s)));
     if (U.$('s-add-ticker')) U.$('s-add-ticker').value = '';
   },
 
