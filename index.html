@@ -299,8 +299,6 @@
 
   <!-- ══════════ MORNING BRIEF ══════════ -->
   <section id="tab-morning" class="tab-panel">
-
-    <!-- Header bar -->
     <div class="mb-header">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
         <div>
@@ -321,58 +319,41 @@
         </div>
       </div>
     </div>
-
-    <!-- Progress log -->
     <div id="mb-progress" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:11px;">
       <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Scanning…</div>
       <div id="mb-progress-log"></div>
     </div>
-
-    <!-- Market context row -->
     <div id="mb-market-context" style="display:none;margin-bottom:14px;">
       <div class="mb-section-title">📊 Market Context</div>
       <div id="mb-context-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;"></div>
     </div>
-
-    <!-- Ticker scorecard -->
     <div id="mb-scorecard-section" style="display:none;margin-bottom:14px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
         <div class="mb-section-title" style="margin-bottom:0;">📋 Watchlist Scorecard</div>
         <div style="font-size:10px;color:var(--muted);">Sorted by signal strength. Click row to open options chain.</div>
       </div>
       <div id="mb-scorecard-header" class="mb-ticker-row" style="background:var(--surface);border-color:var(--border);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;cursor:default;">
-        <div>Symbol</div>
-        <div>Price</div>
-        <div>Chg%</div>
+        <div>Symbol</div><div>Price</div><div>Chg%</div>
         <div style="display:flex;align-items:center;gap:4px;">Signal Score <span style="color:var(--muted);font-size:9px;">(RSI·MACD·BB·Trend)</span></div>
-        <div>RSI</div>
-        <div>MACD</div>
+        <div>RSI</div><div>MACD</div>
         <div class="mb-hide-sm">BB%</div>
         <div class="mb-hide-sm">Trend</div>
         <div>Rating</div>
       </div>
       <div id="mb-scorecard" style="display:flex;flex-direction:column;gap:6px;margin-top:6px;"></div>
     </div>
-
-    <!-- Top opportunities -->
     <div id="mb-opps-section" style="display:none;margin-bottom:14px;">
       <div class="mb-section-title">🎯 Top Options Opportunities</div>
       <div id="mb-opps-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;"></div>
     </div>
-
-    <!-- Earnings alerts -->
     <div id="mb-earnings-section" style="display:none;margin-bottom:14px;">
       <div class="mb-section-title">📅 Earnings This Week</div>
       <div id="mb-earnings-list"></div>
     </div>
-
-    <!-- Risk checklist -->
     <div id="mb-checklist-section" style="display:none;margin-bottom:14px;">
       <div class="mb-section-title">✅ Pre-Trade Risk Checklist</div>
       <div id="mb-checklist-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
     </div>
-
-    <!-- Empty state -->
     <div id="mb-empty" style="text-align:center;padding:60px 24px;color:var(--muted);">
       <div style="font-size:48px;margin-bottom:12px;">🌅</div>
       <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;">Ready for your morning brief</div>
@@ -382,7 +363,6 @@
       </div>
       <div style="font-size:11px;color:var(--border2);">Requires Finnhub API key configured in ⚙ Settings</div>
     </div>
-
   </section>
 
   <!-- ══════════ DASHBOARD ══════════ -->
@@ -590,18 +570,8 @@
         </div>
         <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px;">
           <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">🇨🇦 Quick-add TSX names</div>
-          <div style="display:flex;flex-wrap:wrap;gap:5px;">
-            ${[
-              ['TD.TO','Banks'],['RY.TO','Banks'],['BNS.TO','Banks'],['BMO.TO','Banks'],['CM.TO','Banks'],['NA.TO','Banks'],
-              ['ENB.TO','Energy'],['CNQ.TO','Energy'],['SU.TO','Energy'],['CVE.TO','Energy'],['TRP.TO','Energy'],
-              ['CNR.TO','Rail'],['CP.TO','Rail'],
-              ['SHOP.TO','Tech'],['CSU.TO','Tech'],['OTEX.TO','Tech'],
-              ['BCE.TO','Telco'],['T.TO','Telco'],['RCI.B.TO','Telco'],
-              ['ABX.TO','Mining'],['AEM.TO','Mining'],['WPM.TO','Mining'],
-              ['MFC.TO','Insurance'],['SLF.TO','Insurance'],['POW.TO','Insurance'],
-              ['XIU.TO','ETF'],['XIC.TO','ETF'],['ZEB.TO','ETF'],
-            ].map(([s, sector]) => `<button onclick="app.addTicker('${s}')" title="${s} — ${sector}" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:3px 8px;font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--text);cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'">${s.replace('.TO','')}<span style="color:var(--muted);font-size:9px;margin-left:3px;">.TO</span></button>`).join('')}
-          </div>
+          <!-- FIX: TSX quick-add buttons are now rendered by JS into this container -->
+          <div id="tsx-quickadd-grid" style="display:flex;flex-wrap:wrap;gap:5px;"></div>
           <div style="margin-top:8px;font-size:10px;color:var(--muted);line-height:1.6;">
             🇺🇸 US: enter symbol as-is — <code style="color:var(--cyan);">NVDA</code> · <code style="color:var(--cyan);">SPY</code><br>
             🇨🇦 TSX: append <code style="color:var(--cyan);">.TO</code> &nbsp;·&nbsp; TSXV: <code style="color:var(--cyan);">.V</code> &nbsp;·&nbsp; CSE: <code style="color:var(--cyan);">.CN</code>
@@ -770,38 +740,27 @@ const CFG = {
   YF1:     'https://query1.finance.yahoo.com',
   YF2:     'https://query2.finance.yahoo.com',
   RFR:     0.053,
-  // Default watchlist: US tickers as-is, TSX tickers with .TO suffix
   DEFAULT_WL: ['NVDA','AMD','GOOGL','SPY','TD.TO','RY.TO','BNS.TO','BMO.TO','CM.TO','ENB.TO','CNQ.TO','SU.TO'],
 };
 
-// ────────────────────────────────────────────────────────────
-//  TSX / EXCHANGE UTILITIES
-//  TSX tickers use the .TO suffix in both Finnhub and Yahoo Finance.
-//  .V  = TSX Venture Exchange (junior/small-cap)
-//  .CN = Canadian Securities Exchange
-//  Options on TSX stocks are traded at MX (Montréal Exchange).
-//  Note: TSX equity options are much less liquid than US options;
-//  many TSX names have no listed options at all.
-// ────────────────────────────────────────────────────────────
-const TSX = {
-  // Return true if sym is a Canadian exchange ticker
-  isCanadian: sym => /\.(TO|V|CN|NE)$/i.test(sym),
+// ─── FIX 1: symId() — sanitise any symbol into a valid HTML element ID ───────
+// Dots in IDs (e.g. "TD.TO") cause getElementById to fail silently because
+// browsers treat dots as CSS class separators in querySelector, and some engines
+// trip on them in getElementById too.  Replace every non-alphanumeric char → '-'.
+function symId(sym) {
+  return 'card-' + sym.replace(/[^a-zA-Z0-9]/g, '-');
+}
 
-  // Normalise user input → proper suffix form.
-  // Accepts: "TD", "TD.TO", "td.to", "TD:CA" → "TD.TO"
-  // Passes through US symbols unchanged.
+// ─── TSX / EXCHANGE UTILITIES ─────────────────────────────────────────────────
+const TSX = {
+  isCanadian: sym => /\.(TO|V|CN|NE)$/i.test(sym),
   normalise(raw) {
     const s = raw.trim().toUpperCase();
-    // Strip trailing exchange codes sometimes pasted by users
     const stripped = s.replace(/:CA$|:TSX$|:TSV$/, '');
-    // Already has a recognised Canadian suffix
     if (/\.(TO|V|CN|NE)$/.test(stripped)) return stripped;
-    // Explicit .TO request
     if (stripped.endsWith('.TO')) return stripped;
-    return stripped; // US symbol — leave alone
+    return stripped;
   },
-
-  // Human-readable exchange label for UI
   exchangeLabel(sym) {
     if (/\.TO$/i.test(sym))  return 'TSX';
     if (/\.V$/i.test(sym))   return 'TSXV';
@@ -809,17 +768,9 @@ const TSX = {
     if (/\.NE$/i.test(sym))  return 'NEO';
     return 'US';
   },
-
-  // Display name stripped of suffix for compact UI (e.g. "TD.TO" → "TD")
   displaySym(sym) { return sym.replace(/\.(TO|V|CN|NE)$/i, ''); },
-
-  // Yahoo Finance uses the .TO suffix directly; Finnhub uses it too.
-  // For options: Yahoo supports TSX options via the same v7 endpoint.
-  // MDA (Market Data App) does NOT support TSX options on free tier.
-  fhSym: sym => sym,   // Finnhub accepts TD.TO natively
-  yfSym: sym => sym,   // Yahoo Finance accepts TD.TO natively
-
-  // CAD/USD note for UI
+  fhSym: sym => sym,
+  yfSym: sym => sym,
   currencyNote(sym) {
     if (TSX.isCanadian(sym)) return 'CAD';
     return 'USD';
@@ -1150,6 +1101,36 @@ function toast(msg,type='info'){
   setTimeout(()=>el.remove(),3500);
 }
 
+// ─── FIX 2: TSX quick-add grid — rendered by JS so template literals work ────
+// Original code embedded ${[...].map(...)} directly in static HTML, which is
+// never evaluated by the browser — it renders as literal text "${...}".
+// Now rendered once at init via renderTSXQuickAdd().
+function renderTSXQuickAdd() {
+  const el = U.$('tsx-quickadd-grid');
+  if (!el) return;
+  const stocks = [
+    ['TD.TO','Banks'],['RY.TO','Banks'],['BNS.TO','Banks'],['BMO.TO','Banks'],['CM.TO','Banks'],['NA.TO','Banks'],
+    ['ENB.TO','Energy'],['CNQ.TO','Energy'],['SU.TO','Energy'],['CVE.TO','Energy'],['TRP.TO','Energy'],
+    ['CNR.TO','Rail'],['CP.TO','Rail'],
+    ['SHOP.TO','Tech'],['CSU.TO','Tech'],['OTEX.TO','Tech'],
+    ['BCE.TO','Telco'],['T.TO','Telco'],['RCI.B.TO','Telco'],
+    ['ABX.TO','Mining'],['AEM.TO','Mining'],['WPM.TO','Mining'],
+    ['MFC.TO','Insurance'],['SLF.TO','Insurance'],['POW.TO','Insurance'],
+    ['XIU.TO','ETF'],['XIC.TO','ETF'],['ZEB.TO','ETF'],
+  ];
+  el.innerHTML = stocks.map(([sym, sector]) => {
+    const display = sym.replace('.TO','');
+    return `<button onclick="app.addTicker('${sym}')" title="${sym} — ${sector}"
+      style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:3px 8px;
+             font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--text);cursor:pointer;
+             transition:border-color .15s;"
+      onmouseover="this.style.borderColor='var(--border2)'"
+      onmouseout="this.style.borderColor='var(--border)'">
+      ${display}<span style="color:var(--muted);font-size:9px;margin-left:3px;">.TO</span>
+    </button>`;
+  }).join('');
+}
+
 const CHS = {
   destroy(id){},
   _draw(imgId, datasets, opts={}){
@@ -1270,7 +1251,8 @@ const MORNING = {
     if (!el) return;
     const icon = status === 'done' ? '✓' : status === 'fail' ? '✗' : '…';
     const cls  = status === 'done' ? 'done' : status === 'fail' ? 'fail' : 'wait';
-    const id   = `mblog-${sym.replace(/[^a-z0-9]/gi,'')}`;
+    // FIX: sanitise log row ID the same way we sanitise card IDs
+    const id   = `mblog-${sym.replace(/[^a-z0-9]/gi,'-')}`;
     let row = document.getElementById(id);
     if (!row) {
       row = document.createElement('div');
@@ -1283,17 +1265,14 @@ const MORNING = {
       <span>${msg}</span>`;
   },
 
-  // Compute technicals from history
   _analyze(sym, hist) {
     if (!hist || !hist.closes || hist.closes.length < 30) return null;
     const closes = hist.closes.filter(v => v != null);
     if (closes.length < 26) return null;
-
     const rsi  = IND.rsi(closes);
     const macd = IND.macd(closes);
     const bb   = IND.bb(closes);
     const sma50= IND.sma(closes, Math.min(50, closes.length));
-
     const last = arr => arr.filter(v => v != null).pop();
     const lRsi   = last(rsi) || 50;
     const lPrice = closes[closes.length - 1];
@@ -1303,16 +1282,12 @@ const MORNING = {
     const lLo    = last(bb.lo)  || lPrice;
     const lMid   = last(bb.mid) || lPrice;
     const lSma50 = last(sma50)  || lPrice;
-
     const bbPct  = lUp !== lLo ? Math.round((lPrice - lLo) / (lUp - lLo) * 100) : 50;
     const macdBull = lMacd > lSig;
     const abv50  = lPrice > lSma50;
     const abv20  = lPrice > lMid;
-
     const rsiBullThr  = S.settings?.mbRsiLow  ? +S.settings.mbRsiLow  : 35;
     const rsiBearThr  = S.settings?.mbRsiHigh ? +S.settings.mbRsiHigh : 65;
-
-    // Score: +1 bull / -1 bear for each signal
     let score = 0;
     let signals = [];
     if (lRsi < rsiBullThr) { score++; signals.push({label:'RSI oversold', type:'bull'}); }
@@ -1323,7 +1298,6 @@ const MORNING = {
     else if (bbPct > 80) { score--; signals.push({label:'Near BB upper', type:'bear'}); }
     if (abv50 && abv20) { score++; signals.push({label:'Above SMA20/50', type:'bull'}); }
     else if (!abv50 && !abv20) { score--; signals.push({label:'Below SMA20/50', type:'bear'}); }
-
     return {
       sym, lPrice, lRsi, macdBull, bbPct,
       abv50, abv20, lSma50, lMid, score, signals,
@@ -1331,7 +1305,6 @@ const MORNING = {
     };
   },
 
-  // Scan watchlist: for each ticker load history + optionally options
   async run() {
     if (this._running) { toast('Brief already running…', 'warn'); return; }
     if (!S.settings?.fhKey) {
@@ -1340,8 +1313,6 @@ const MORNING = {
     }
     this._running = true;
     this._results = [];
-
-    // UI setup
     U.$('mb-empty').style.display = 'none';
     U.$('mb-progress').style.display = 'block';
     U.$('mb-progress-log').innerHTML = '';
@@ -1353,8 +1324,6 @@ const MORNING = {
     const btn = U.$('mb-run-btn');
     btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;"></div> Scanning…';
 
-    // 1. Market context: fetch US + Canadian index proxies
-    // XIU.TO = iShares S&P/TSX 60 ETF — the TSX benchmark proxy
     const ctxSyms = ['SPY', 'QQQ', 'IWM', 'VIXY', 'XIU.TO'];
     const ctxLabels = {
       'SPY':    'S&P 500 (SPY)',
@@ -1373,15 +1342,13 @@ const MORNING = {
     }
     this._renderMarketContext(ctxQuotes, ctxLabels);
 
-    // 2. Scan watchlist tickers
-    const syms = S.watchlist.slice(0, 12); // cap at 12 to respect rate limits
+    const syms = S.watchlist.slice(0, 12);
     for (const sym of syms) {
       this.log(sym, 'wait', 'Fetching history…');
       const hist = await MKT.history(sym, '3mo', '1d');
       if (!hist) { this.log(sym, 'fail', 'No historical data'); await new Promise(r => setTimeout(r, 350)); continue; }
       const analysis = this._analyze(sym, hist);
       if (!analysis) { this.log(sym, 'fail', 'Insufficient data'); await new Promise(r => setTimeout(r, 350)); continue; }
-      // Also fetch fresh quote for spot price
       const q = await MKT._fhQuote(sym, S.settings.fhKey);
       if (q) { S.quotes[sym] = q; analysis.lPrice = q.regularMarketPrice || analysis.lPrice; analysis.chgPct = q.regularMarketChangePercent || 0; }
       analysis.chgPct = analysis.chgPct || 0;
@@ -1391,13 +1358,11 @@ const MORNING = {
       await new Promise(r => setTimeout(r, 350));
     }
 
-    // 3. Render scorecard & opportunities
     this._renderScorecard();
     this._renderOpportunities();
     this._renderEarnings();
     this._renderChecklist();
 
-    // Done
     btn.disabled = false;
     btn.innerHTML = '<span style="font-size:16px;">↻</span> Re-run Brief';
     this._running = false;
@@ -1414,7 +1379,6 @@ const MORNING = {
       const cls = chg >= 0 ? 'up' : 'down';
       const bdr = Math.abs(chg) > 2 ? (chg > 0 ? 'rgba(52,211,153,0.3)' : 'rgba(248,113,113,0.3)') : 'var(--border)';
       const isTSX = TSX.isCanadian(sym);
-      const ccy = TSX.currencyNote(sym);
       const label = labelMap?.[sym] || sym;
       return `<div class="stat-box" style="border-color:${bdr};">
         <div class="stat-label" style="display:flex;align-items:center;gap:4px;">
@@ -1481,7 +1445,6 @@ const MORNING = {
     const minScore = S.settings?.mbMinScore ? +S.settings.mbMinScore : 2;
     const opps = this._results.filter(r => Math.abs(r.score) >= minScore);
     if (!opps.length) { section.style.display = 'none'; return; }
-
     grid.innerHTML = opps.map(r => {
       const isBull = r.score > 0;
       const isTSX = TSX.isCanadian(r.sym);
@@ -1525,12 +1488,7 @@ const MORNING = {
     const el = U.$('mb-earnings-list');
     const section = U.$('mb-earnings-section');
     if (!el) return;
-    // Show which watchlist tickers are in the scan window (±5 trading days)
-    const today = new Date();
-    const inWl = S.watchlist.map(s => ({
-      sym: s,
-      link: `https://finance.yahoo.com/quote/${s}`,
-    }));
+    const inWl = S.watchlist.map(s => ({ sym: s, link: `https://finance.yahoo.com/quote/${s}` }));
     el.innerHTML = `<div class="card card-sm">
       <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.7;">
         Live earnings calendar is not available via free APIs. Use these resources to check for earnings in your watchlist this week:
@@ -1593,7 +1551,6 @@ const MORNING = {
     if (btn) { btn.disabled = false; btn.innerHTML = '<span style="font-size:16px;">▶</span> Run Morning Brief'; }
   },
 
-  // Countdown to market open
   startCountdown() {
     const el = U.$('mb-countdown');
     if (!el) return;
@@ -1606,7 +1563,6 @@ const MORNING = {
       const etS = now.getUTCSeconds();
       const minTotal = etH * 60 + etM;
       if (minTotal >= 240 && minTotal < 570) {
-        // Pre-market: count down to 9:30 = 570 min
         const secLeft = (570 - minTotal) * 60 - etS;
         const h = Math.floor(secLeft / 3600);
         const m = Math.floor((secLeft % 3600) / 60);
@@ -1644,7 +1600,8 @@ function renderWLCard(sym, q) {
   const isTSX = TSX.isCanadian(sym);
   const exLabel = TSX.exchangeLabel(sym);
   const ccy = TSX.currencyNote(sym);
-  return `<div class="wl-card ${price ? (isUp ? 'up-card' : 'down-card') : ''}" onclick="app.quickOptions('${sym}')">
+  // FIX: use symId() for the element id so dots in TSX symbols don't break getElementById
+  return `<div class="wl-card ${price ? (isUp ? 'up-card' : 'down-card') : ''}" id="${symId(sym)}" onclick="app.quickOptions('${sym}')">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
       <div>
         <div style="display:flex;align-items:center;gap:5px;">
@@ -1823,12 +1780,12 @@ const app = {
     MORNING.initDateBadge();
     MORNING.startCountdown();
     renderSettingsWL();
+    renderTSXQuickAdd();   // FIX: render TSX quick-add buttons via JS
     renderTradeStats();
     renderTradeRows();
     if (U.$('t-date')) U.$('t-date').value = U.today();
     if (U.$('m-exit-date')) U.$('m-exit-date').value = U.today();
 
-    // Auto-open morning brief during pre-market hours
     const mbAutoOpen = S.settings?.mbAutoOpen;
     const mbAutoRun  = S.settings?.mbAutoRun;
     if (mbAutoOpen || mbAutoRun) {
@@ -1838,7 +1795,7 @@ const app = {
       const etH = (now.getUTCHours() + etOff + 24) % 24;
       const etM = now.getUTCMinutes();
       const minTotal = etH * 60 + etM;
-      const isPreMarket = (minTotal >= 360 && minTotal < 570); // 6:00–9:30 AM ET
+      const isPreMarket = (minTotal >= 360 && minTotal < 570);
       if (isPreMarket) {
         this.switchTab('morning');
         if (mbAutoRun && S.settings?.fhKey) {
@@ -1882,25 +1839,35 @@ const app = {
 
   async refreshAll() {
     const grid = U.$('watchlist-grid');
-    if (!S.watchlist.length) { grid.innerHTML = `<div style="grid-column:1/-1;" class="card" style="text-align:center;color:var(--muted);">Add tickers to your watchlist to begin.</div>`; return; }
+    if (!S.watchlist.length) {
+      grid.innerHTML = `<div style="grid-column:1/-1;" class="card"><div style="text-align:center;color:var(--muted);">Add tickers to your watchlist to begin.</div></div>`;
+      return;
+    }
     const fhKey = S.settings?.fhKey;
     if (!fhKey) {
       grid.innerHTML = `<div style="grid-column:1/-1;" class="card"><div style="color:var(--yellow);font-size:13px;font-weight:600;margin-bottom:8px;">⚠️ No API key configured</div><div style="font-size:12px;color:var(--muted);">Go to <strong style="color:var(--text);">⚙ Settings</strong> → Finnhub API Key → paste your key → Save &amp; Test.</div></div>`;
       return;
     }
+
+    // FIX: skeleton uses symId() so getElementById later works for Canadian tickers
     grid.innerHTML = S.watchlist.map(sym => `
-      <div class="wl-card" id="card-${sym}">
+      <div class="wl-card" id="${symId(sym)}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
-          <div><div style="font-family:var(--font-mono);font-size:13px;font-weight:700;">${sym}</div></div>
+          <div>
+            <div style="font-family:var(--font-mono);font-size:13px;font-weight:700;">${TSX.displaySym(sym)}</div>
+            ${TSX.isCanadian(sym) ? '<span class="badge badge-blue" style="font-size:8px;padding:1px 4px;">TSX</span>' : ''}
+          </div>
           <button onclick="event.stopPropagation();app.removeTicker('${sym}')" style="color:var(--muted);background:none;border:none;cursor:pointer;font-size:12px;padding:2px 4px;">✕</button>
         </div>
         <div style="color:var(--muted);font-size:11px;padding:8px 0;display:flex;align-items:center;gap:6px;"><div class="spinner" style="width:12px;height:12px;border-width:2px;"></div> Loading…</div>
       </div>`).join('');
+
     for (const sym of S.watchlist) {
       const q = await MKT._fhQuote(sym, fhKey);
       if (q) S.quotes[sym] = q;
-      const card = document.getElementById(`card-${sym}`);
-      if (card) card.outerHTML = renderWLCard(sym, S.quotes[sym]);
+      // FIX: use symId() to find the card element — dots in TD.TO broke the original lookup
+      const cardEl = document.getElementById(symId(sym));
+      if (cardEl) cardEl.outerHTML = renderWLCard(sym, S.quotes[sym]);
       await new Promise(r => setTimeout(r, 350));
     }
     renderTradeStats();
@@ -2284,7 +2251,6 @@ const app = {
     if (s.maxPos   && U.$('r-position'))  U.$('r-position').value  = s.maxPos;
     if (s.maxLoss  && U.$('r-daily-loss')) U.$('r-daily-loss').value = s.maxLoss;
     if (s.defContracts && U.$('r-contracts')) U.$('r-contracts').value = s.defContracts;
-    // Morning Brief settings
     if (U.$('mb-auto-open'))  U.$('mb-auto-open').checked  = !!s.mbAutoOpen;
     if (U.$('mb-auto-run'))   U.$('mb-auto-run').checked   = !!s.mbAutoRun;
     if (U.$('mb-rsi-low'))    U.$('mb-rsi-low').value      = s.mbRsiLow  || '35';
