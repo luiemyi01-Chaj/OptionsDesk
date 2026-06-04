@@ -769,7 +769,23 @@ const TSX = {
     return 'US';
   },
   displaySym(sym) { return sym.replace(/\.(TO|V|CN|NE)$/i, ''); },
-  fhSym: sym => sym,
+  // ── FINNHUB SYMBOL CONVERSION ────────────────────────────────────────────────
+  // Finnhub's quote endpoint wants the bare symbol with NO exchange suffix:
+  //   TD.TO → TD,  RY.TO → RY,  NVDA → NVDA (US unchanged)
+  // Finnhub's candle (history) endpoint wants exchange:symbol format:
+  //   TD.TO → TO:TD,  BCE.TO → TO:BCE,  NVDA → NVDA (US unchanged)
+  fhQuoteSym(sym) {
+    // Strip exchange suffix — Finnhub quote API resolves by bare ticker
+    return sym.replace(/\.(TO|V|CN|NE)$/i, '');
+  },
+  fhCandleSym(sym) {
+    if (/\.TO$/i.test(sym))  return 'TO:'    + sym.replace(/\.TO$/i, '');
+    if (/\.V$/i.test(sym))   return 'TSX-V:' + sym.replace(/\.V$/i, '');
+    if (/\.CN$/i.test(sym))  return 'CSE:'   + sym.replace(/\.CN$/i, '');
+    if (/\.NE$/i.test(sym))  return 'NEO:'   + sym.replace(/\.NE$/i, '');
+    return sym;  // US symbol — pass through unchanged
+  },
+  fhSym: sym => sym,   // kept for backwards compat; prefer fhQuoteSym/fhCandleSym
   yfSym: sym => sym,
   currencyNote(sym) {
     if (TSX.isCanadian(sym)) return 'CAD';
@@ -905,7 +921,9 @@ const MKT = {
 
   async _fhQuote(sym,key){
     try{
-      const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${key}`,{signal:AbortSignal.timeout(8000)});
+      // FIX: Finnhub quote endpoint uses bare symbol — TD.TO must become TD
+      const fhSym = TSX.fhQuoteSym(sym);
+      const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${fhSym}&token=${key}`,{signal:AbortSignal.timeout(8000)});
       if(!r.ok) return null;
       const d=await r.json();
       if(!d||!d.c) return null;
@@ -919,6 +937,32 @@ const MKT = {
         fiftyTwoWeekLow:  d.l||0,
         prevClose: d.pc||0,
         _src:'Finnhub',
+      };
+    }catch{return null;}
+  },
+
+  // FIX: Yahoo Finance quote fallback — used when Finnhub returns no data for a symbol
+  // Yahoo Finance accepts .TO suffix natively via the v8 chart endpoint (no proxy needed
+  // for quote data since we extract it from a 1-day range chart call through the CORS proxy).
+  async _yfQuote(sym){
+    try{
+      const url=`${CFG.YF1}/v8/finance/chart/${sym}?range=1d&interval=1d`;
+      const d=await this.fetch(url);
+      const r=d?.chart?.result?.[0];
+      if(!r) return null;
+      const meta=r.meta||{};
+      const close=meta.regularMarketPrice||meta.previousClose;
+      if(!close) return null;
+      return {
+        symbol:sym, shortName:meta.symbol||sym,
+        regularMarketPrice: close,
+        regularMarketChange: meta.regularMarketPrice&&meta.previousClose ? meta.regularMarketPrice-meta.previousClose : 0,
+        regularMarketChangePercent: meta.regularMarketPrice&&meta.previousClose ? ((meta.regularMarketPrice-meta.previousClose)/meta.previousClose)*100 : 0,
+        regularMarketVolume: meta.regularMarketVolume||0,
+        fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh||0,
+        fiftyTwoWeekLow:  meta.fiftyTwoWeekLow||0,
+        prevClose: meta.previousClose||0,
+        _src:'Yahoo',
       };
     }catch{return null;}
   },
@@ -1022,6 +1066,8 @@ const MKT = {
     if(fhKey){
       const res=await this.historyFH(sym,sizeMap[range]||90,fhKey);
       if(res){CACHE.set(cacheKey,res,CACHE.TTL_HISTORY);MKT._updateCacheDisplay();return res;}
+      // FIX: Finnhub returned nothing (e.g. candle format mismatch or coverage gap)
+      // Fall through to Yahoo Finance proxy below.
     }
     const url=`${CFG.YF1}/v8/finance/chart/${sym}?range=${range}&interval=${interval}&events=earnings`;
     const d=await this.fetch(url);
@@ -1039,7 +1085,9 @@ const MKT = {
     try{
       const to=Math.floor(Date.now()/1000);
       const from=to - days*86400;
-      const url=`https://finnhub.io/api/v1/stock/candle?symbol=${sym}&resolution=D&from=${from}&to=${to}&token=${key}`;
+      // FIX: Finnhub candle endpoint uses exchange:symbol format for TSX — TD.TO → TO:TD
+      const fhSym = TSX.fhCandleSym(sym);
+      const url=`https://finnhub.io/api/v1/stock/candle?symbol=${fhSym}&resolution=D&from=${from}&to=${to}&token=${key}`;
       const r=await fetch(url,{signal:AbortSignal.timeout(12000)});
       if(!r.ok) return null;
       const d=await r.json();
@@ -1335,7 +1383,8 @@ const MORNING = {
     const ctxQuotes = {};
     for (const s of ctxSyms) {
       this.log(s, 'wait', 'Fetching market context…');
-      const q = await MKT._fhQuote(s, S.settings.fhKey);
+      let q = await MKT._fhQuote(s, S.settings.fhKey);
+      if (!q) q = await MKT._yfQuote(s);
       if (q) ctxQuotes[s] = q;
       this.log(s, q ? 'done' : 'fail', q ? `${U.fp(q.regularMarketPrice)} (${q.regularMarketChangePercent >= 0 ? '+' : ''}${q.regularMarketChangePercent.toFixed(2)}%)` : 'No data');
       await new Promise(r => setTimeout(r, 350));
@@ -1349,7 +1398,8 @@ const MORNING = {
       if (!hist) { this.log(sym, 'fail', 'No historical data'); await new Promise(r => setTimeout(r, 350)); continue; }
       const analysis = this._analyze(sym, hist);
       if (!analysis) { this.log(sym, 'fail', 'Insufficient data'); await new Promise(r => setTimeout(r, 350)); continue; }
-      const q = await MKT._fhQuote(sym, S.settings.fhKey);
+      let q = await MKT._fhQuote(sym, S.settings.fhKey);
+      if (!q) q = await MKT._yfQuote(sym);
       if (q) { S.quotes[sym] = q; analysis.lPrice = q.regularMarketPrice || analysis.lPrice; analysis.chgPct = q.regularMarketChangePercent || 0; }
       analysis.chgPct = analysis.chgPct || 0;
       this._results.push(analysis);
@@ -1863,7 +1913,10 @@ const app = {
       </div>`).join('');
 
     for (const sym of S.watchlist) {
-      const q = await MKT._fhQuote(sym, fhKey);
+      let q = await MKT._fhQuote(sym, fhKey);
+      // FIX: Finnhub returned null for this symbol (common for TSX tickers that need
+      // the bare symbol format). Try Yahoo Finance as fallback.
+      if (!q) q = await MKT._yfQuote(sym);
       if (q) S.quotes[sym] = q;
       // FIX: use symId() to find the card element — dots in TD.TO broke the original lookup
       const cardEl = document.getElementById(symId(sym));
@@ -1890,7 +1943,11 @@ const app = {
     U.$('opt-underlying')?.style && (U.$('opt-underlying').style.display = 'none');
     const [chain, quoteRes] = await Promise.all([
       MKT.optionsChain(sym),
-      S.quotes[sym] ? Promise.resolve(null) : MKT._fhQuote(sym, S.settings?.fhKey).then(q => q ? { [sym]: q } : null),
+      S.quotes[sym] ? Promise.resolve(null) : MKT._fhQuote(sym, S.settings?.fhKey).then(async q => {
+        if (q) return { [sym]: q };
+        const yq = await MKT._yfQuote(sym);
+        return yq ? { [sym]: yq } : null;
+      }),
     ]);
     if (quoteRes) Object.assign(S.quotes, quoteRes);
     if (!chain) {
