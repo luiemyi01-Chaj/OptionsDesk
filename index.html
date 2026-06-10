@@ -1207,8 +1207,14 @@ const MKT = {
 };
 
 const DB = {
-  g:(k,d=null)=>{try{const v=localStorage.getItem('od_'+k);return v?JSON.parse(v):d;}catch{return d;}},
-  s:(k,v)=>{try{localStorage.setItem('od_'+k,JSON.stringify(v));}catch{}},
+  g:(k,d=null)=>{
+    try{ const v=localStorage.getItem('od_'+k); return v?JSON.parse(v):d; }
+    catch(e){ return d; }
+  },
+  s:(k,v)=>{
+    try{ localStorage.setItem('od_'+k,JSON.stringify(v)); }
+    catch(e){ /* storage unavailable */ }
+  },
   init(){
     S.watchlist = DB.g('watchlist', [...CFG.DEFAULT_WL]);
     S.trades    = DB.g('trades', []);
