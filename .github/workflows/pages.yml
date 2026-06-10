@@ -1,9 +1,11 @@
-name: Deploy to GitHub Pages
+# Simple GitHub Pages deployment for a static HTML site
+# Place this file at: .github/workflows/static.yml
+
+name: Deploy static content to Pages
 
 on:
   push:
-    branches:
-      - main
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
