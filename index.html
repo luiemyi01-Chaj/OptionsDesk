@@ -289,6 +289,7 @@
     <button class="tab-btn" data-tab="technical"  onclick="app.switchTab('technical')">Technical Analysis</button>
     <button class="tab-btn" data-tab="earnings"   onclick="app.switchTab('earnings')">Earnings</button>
     <button class="tab-btn" data-tab="trades"     onclick="app.switchTab('trades')">Trade Log</button>
+    <button class="tab-btn" data-tab="retwatch"   onclick="app.switchTab('retwatch')" style="color:var(--cyan);">📅 Retirement Watch</button>
     <button class="tab-btn" data-tab="settings"   onclick="app.switchTab('settings')">⚙ Settings</button>
   </div>
 </div>
@@ -555,6 +556,53 @@
           </tbody>
         </table>
       </div>
+    </div>
+  </section>
+
+  <!-- ══════════ RETIREMENT WATCH ══════════ -->
+  <section id="tab-retwatch" class="tab-panel">
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,rgba(34,211,238,0.08) 0%,rgba(59,130,246,0.06) 100%);border:1px solid rgba(34,211,238,0.2);border-radius:10px;padding:18px 20px;margin-bottom:16px;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--cyan),var(--accent),var(--purple));"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px;">📅 Retirement Intelligence Calendar</div>
+          <div style="font-size:11px;color:var(--muted);">Key Canadian economic releases, policy events &amp; earnings that drive your covered call &amp; RRIF strategy. Live status updates below.</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" onclick="RW.refresh()" id="rw-refresh-btn">↻ Refresh All</button>
+          <button class="btn btn-ghost btn-sm" onclick="RW.clearAlerts()">✕ Clear Alerts</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live alerts strip -->
+    <div id="rw-alerts" style="display:none;margin-bottom:14px;"></div>
+
+    <!-- Calendar table -->
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px;">
+      <table class="dtable" id="rw-table">
+        <thead><tr>
+          <th style="width:130px;">Category</th>
+          <th>Source / Event</th>
+          <th style="width:110px;">Frequency</th>
+          <th style="width:130px;">Next / Schedule</th>
+          <th style="width:90px;">Status</th>
+          <th>Why It Matters for Your Strategy</th>
+        </tr></thead>
+        <tbody id="rw-tbody">
+          <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px;">
+            <div class="spinner" style="margin:0 auto 8px;"></div>Loading calendar…
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Tip bar -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 14px;font-size:11px;color:var(--muted);">
+      💡 <strong style="color:var(--text);">Tip:</strong> Add each event as a recurring reminder in Outlook or Google Calendar labelled <em>"Retirement Watch"</em>.
+      BoC rate decisions drive GIC rates &amp; bank covered-call risk. CPI releases affect RRIF purchasing power. Earnings calls signal covered call timing.
     </div>
   </section>
 
@@ -1021,6 +1069,22 @@ const MKT = {
     }catch{return null;}
   },
 
+  // CORS-proxy fallback for Yahoo Finance options (no Worker required)
+  async _yahooOptionsDirect(sym, date){
+    try{
+      let url=`${CFG.YF2}/v7/finance/options/${sym}`;
+      if(date) url+=`?date=${date}`;
+      const d=await this.fetch(url);
+      const res=d?.optionChain?.result?.[0]||null;
+      if(!res) return null;
+      if(!res._expirationStrings&&res.expirationDates)
+        res._expirationStrings=res.expirationDates.map(ts=>new Date(ts*1000).toISOString().slice(0,10));
+      if(!res.quote) res.quote=S.quotes[sym]||{};
+      res._src='Yahoo(proxy)';
+      return res;
+    }catch{return null;}
+  },
+
   async optionsChain(sym, date=null){
     const cacheKey=`opts_${sym}_${date||'all'}`;
     const cached=CACHE.get(cacheKey);
@@ -1054,6 +1118,11 @@ const MKT = {
         }
       }catch{}
     }
+    // FIX: Last-resort fallback — try Yahoo Finance options via CORS proxy directly.
+    // No Worker or MDA token required. Reliability varies by proxy but works for most
+    // TSX and US symbols via corsproxy.io.
+    const direct=await this._yahooOptionsDirect(sym,date);
+    if(direct){CACHE.set(cacheKey,direct,CACHE.TTL_OPTIONS);MKT._updateCacheDisplay();return direct;}
     return null;
   },
 
@@ -1859,6 +1928,8 @@ const app = {
       await this.refreshAll();
       this.loadEarnings();
     }
+    // Initialise Retirement Watch calendar
+    RW.init();
   },
 
   clock() {
@@ -2371,6 +2442,317 @@ const app = {
         el.style.color = 'var(--red)';
       }
     }
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+//  RETIREMENT WATCH ENGINE
+//  Tracks Canadian macro events that drive RRIF / covered call strategy
+// ════════════════════════════════════════════════════════════
+const RW = {
+
+  // ── Calendar data ─────────────────────────────────────────
+  // Each entry: { id, category, catColor, source, url, freq, schedule, why, fetchFn? }
+  ENTRIES: [
+    {
+      id:'boc-rate', category:'Interest Rates', catColor:'var(--cyan)',
+      source:'Bank of Canada Rate Announcement', url:'https://www.bankofcanada.ca/core-functions/monetary-policy/key-interest-rate/',
+      freq:'8× per year (~6 wks)', schedule:'2 days before each decision',
+      why:'Drives GIC rates, mortgage costs, equity valuations & your bridge plan',
+      fetchFn: 'bocRate',
+    },
+    {
+      id:'boc-fsr', category:'Interest Rates', catColor:'var(--cyan)',
+      source:'BoC Financial Stability Report', url:'https://www.bankofcanada.ca/publications/fsr/',
+      freq:'2× per year (May & Nov)', schedule:'May 1 & Nov 1 (check release)',
+      why:'Flags structural risks like the hedge fund / bond market shift',
+      fetchFn: null,
+    },
+    {
+      id:'statcan-cpi', category:'Inflation & Consumer Health', catColor:'var(--yellow)',
+      source:'Statistics Canada CPI Release', url:'https://www150.statcan.gc.ca/n1/pub/71-607-x/2018016/cpi-ipc-eng.htm',
+      freq:'Monthly (~3rd week)', schedule:'Monthly (check StatCan calendar)',
+      why:'Rising inflation can delay rate cuts & erode purchasing power of your RRIF draws',
+      fetchFn: 'statcanCPI',
+    },
+    {
+      id:'ccs-survey', category:'Inflation & Consumer Health', catColor:'var(--yellow)',
+      source:'Credit Counselling Society Survey', url:'https://nomoredebts.org',
+      freq:'Annual (Feb/Mar)', schedule:'March 1 each year',
+      why:'Consumer debt trends signal economic stress that affects bank stocks & spending',
+      fetchFn: null,
+    },
+    {
+      id:'cmhc-delinq', category:'Housing & Mortgages', catColor:'var(--red)',
+      source:'CMHC Mortgage Delinquency Data', url:'https://www.cmhc-schl.gc.ca/professionals/housing-markets-data-and-research',
+      freq:'Quarterly', schedule:'Feb / May / Aug / Nov (1st of month)',
+      why:'Missed payments = early warning for bank profit pressure & covered call risk',
+      fetchFn: null,
+    },
+    {
+      id:'statcan-lfs', category:'Employment', catColor:'var(--green)',
+      source:'Statistics Canada Labour Force Survey', url:'https://www150.statcan.gc.ca/n1/pub/71-607-x/71-607-x2018004-eng.htm',
+      freq:'Monthly (1st Friday)', schedule:'Monthly (1st Friday)',
+      why:'Rising employment supports equity markets & confirms your soft-landing thesis',
+      fetchFn: 'statcanLFS',
+    },
+    {
+      id:'statcan-trade', category:'Trade & Exports', catColor:'var(--purple)',
+      source:'Statistics Canada International Trade', url:'https://www150.statcan.gc.ca/n1/pub/71-607-x/71-607-x2018006-eng.htm',
+      freq:'Monthly (~5th week)', schedule:'Monthly (check StatCan calendar)',
+      why:'Export surplus = economic strength; key for CAD/USD exchange rate & portfolio impact',
+      fetchFn: null,
+    },
+    {
+      id:'fin-debt-mgmt', category:'Bond Market & Govt Debt', catColor:'var(--orange)',
+      source:'Dept of Finance Debt Management Report', url:'https://www.canada.ca/en/department-finance.html',
+      freq:'Annual (Aug/Sep)', schedule:'Sept 1 each year',
+      why:'Tracks who holds Canada\'s debt — hedge fund growth = rising refinancing risk for all Canadians',
+      fetchFn: null,
+    },
+    {
+      id:'betterdwelling', category:'Bond Market & Govt Debt', catColor:'var(--orange)',
+      source:'BetterDwelling / Globe & Mail Analysis', url:'https://betterdwelling.com',
+      freq:'As published (ongoing)', schedule:'Weekly scan (e.g. Sunday AM)',
+      why:'Independent analysis that translates BoC/Finance reports into plain language',
+      fetchFn: null,
+    },
+    {
+      id:'bank-earnings', category:'Canadian Bank Earnings', catColor:'var(--accent2)',
+      source:'TD, RY, BNS, BMO, CM Earnings Calls (Investor Relations)', url:'https://finance.yahoo.com/calendar/earnings',
+      freq:'Quarterly (Feb/May/Aug/Nov)', schedule:'1 week before each earnings date',
+      why:'Mortgage provision trends directly signal covered call & collar strategy timing on bank stocks',
+      fetchFn: 'bankEarnings',
+    },
+  ],
+
+  _status: {},   // id → { label, color, detail, ts }
+  _alerts: [],
+
+  // ── Render ────────────────────────────────────────────────
+  render() {
+    const tbody = U.$('rw-tbody');
+    if (!tbody) return;
+    let lastCat = '';
+    tbody.innerHTML = this.ENTRIES.map(e => {
+      const st = this._status[e.id] || {};
+      const isNewCat = e.category !== lastCat;
+      lastCat = e.category;
+      const statusBadge = st.label
+        ? `<span class="badge" style="background:${st.color}22;color:${st.color};border-color:${st.color}44;white-space:nowrap;">${st.label}</span>`
+        : `<span class="badge badge-gray">—</span>`;
+      const catCell = isNewCat
+        ? `<td rowspan="${this.ENTRIES.filter(x=>x.category===e.category).length}" style="vertical-align:top;padding-top:10px;border-right:1px solid var(--border);font-weight:700;font-size:11px;color:${e.catColor};line-height:1.4;">${e.category}</td>`
+        : '';
+      return `<tr>
+        ${catCell}
+        <td style="font-size:11px;">
+          <a href="${e.url}" target="_blank" style="color:var(--accent2);text-decoration:none;font-weight:600;">${e.source}</a>
+          ${st.detail ? `<div style="font-size:10px;color:var(--muted);margin-top:2px;">${st.detail}</div>` : ''}
+        </td>
+        <td style="font-size:10px;color:var(--muted);">${e.freq}</td>
+        <td style="font-size:10px;color:var(--muted);">${e.schedule}</td>
+        <td>${statusBadge}</td>
+        <td style="font-size:10px;color:var(--muted);line-height:1.5;">${e.why}</td>
+      </tr>`;
+    }).join('');
+    this._renderAlerts();
+  },
+
+  _renderAlerts() {
+    const el = U.$('rw-alerts');
+    if (!el) return;
+    if (!this._alerts.length) { el.style.display = 'none'; return; }
+    el.style.display = 'block';
+    el.innerHTML = this._alerts.map(a =>
+      `<div style="background:var(--card);border:1px solid ${a.color}44;border-left:3px solid ${a.color};border-radius:6px;padding:10px 14px;margin-bottom:6px;font-size:11px;">
+        <span style="color:${a.color};font-weight:700;">${a.title}</span>
+        <span style="color:var(--muted);margin-left:10px;">${a.body}</span>
+        <a href="${a.url}" target="_blank" style="color:var(--accent2);margin-left:10px;">Details ↗</a>
+      </div>`
+    ).join('');
+  },
+
+  // ── Live data fetchers ────────────────────────────────────
+  async bocRate() {
+    // Fetch next BoC decision date from BoC website
+    try {
+      const html = await MKT.fetch('https://www.bankofcanada.ca/core-functions/monetary-policy/key-interest-rate/');
+      // Extract overnight rate from page text
+      if (!html) return;
+      const text = JSON.stringify(html);
+      const rateMatch = text.match(/(\d+\.\d+)\s*%/);
+      const rate = rateMatch ? rateMatch[1] : null;
+      this._status['boc-rate'] = {
+        label: rate ? `Rate: ${rate}%` : 'Check site',
+        color: 'var(--cyan)',
+        detail: rate ? `Overnight rate: ${rate}%` : 'Visit bankofcanada.ca for current rate',
+        ts: Date.now(),
+      };
+    } catch {}
+  },
+
+  async statcanCPI() {
+    // Fetch latest CPI from Statistics Canada via their web API
+    try {
+      const d = await MKT.fetch('https://www150.statcan.gc.ca/t1/tbl1/en/dtbl!downloadTbl/jsonDownload/1810000401');
+      if (d) {
+        this._status['statcan-cpi'] = { label:'See StatCan', color:'var(--yellow)', detail:'Visit statcan.gc.ca for latest release', ts:Date.now() };
+      }
+    } catch {}
+    // Fallback: mark as needing manual check
+    if (!this._status['statcan-cpi']) {
+      this._status['statcan-cpi'] = { label:'Manual check', color:'var(--yellow)', detail:'statcan.gc.ca — ~3rd week each month', ts:Date.now() };
+    }
+  },
+
+  async statcanLFS() {
+    this._status['statcan-lfs'] = {
+      label:'1st Friday',
+      color:'var(--green)',
+      detail:'Next release: 1st Friday of month — statcan.gc.ca',
+      ts:Date.now(),
+    };
+  },
+
+  async bankEarnings() {
+    // Fetch upcoming earnings for Canadian bank symbols via Finnhub
+    const fhKey = S.settings?.fhKey;
+    if (!fhKey) {
+      this._status['bank-earnings'] = { label:'Need API key', color:'var(--muted)', detail:'Add Finnhub key in Settings', ts:Date.now() };
+      return;
+    }
+    const banks = ['TD','RY','BNS','BMO','CM'];
+    const now = Math.floor(Date.now()/1000);
+    const future = now + 90*86400;
+    let nextEarnings = null;
+    for (const b of banks) {
+      try {
+        const r = await fetch(`https://finnhub.io/api/v1/stock/earnings?symbol=${b}&token=${fhKey}`,{signal:AbortSignal.timeout(6000)});
+        if (!r.ok) continue;
+        const d = await r.json();
+        if (Array.isArray(d) && d.length) {
+          const upcoming = d.filter(e => e.date && new Date(e.date).getTime()/1000 > now)
+                            .sort((a,b) => new Date(a.date)-new Date(b.date));
+          if (upcoming.length) {
+            const dt = new Date(upcoming[0].date);
+            const label = `${b} ${dt.toLocaleDateString('en-CA',{month:'short',day:'numeric'})}`;
+            if (!nextEarnings || new Date(upcoming[0].date) < new Date(nextEarnings.date)) {
+              nextEarnings = { sym: b, date: upcoming[0].date, label };
+            }
+          }
+        }
+        await new Promise(r=>setTimeout(r,220));
+      } catch {}
+    }
+    if (nextEarnings) {
+      const dte = Math.ceil((new Date(nextEarnings.date)-Date.now())/864e5);
+      this._status['bank-earnings'] = {
+        label: `${nextEarnings.label} (${dte}d)`,
+        color: dte <= 7 ? 'var(--red)' : dte <= 14 ? 'var(--yellow)' : 'var(--green)',
+        detail: `Next bank earnings: ${nextEarnings.sym} on ${nextEarnings.date}`,
+        ts: Date.now(),
+      };
+      if (dte <= 7) {
+        this._alerts.push({
+          title:`⚡ ${nextEarnings.sym} earnings in ${dte}d`,
+          body:`Review covered call & collar positions on ${nextEarnings.sym} before ${nextEarnings.date}`,
+          color:'var(--yellow)',
+          url:'https://finance.yahoo.com/calendar/earnings',
+        });
+      }
+    } else {
+      this._status['bank-earnings'] = { label:'No data', color:'var(--muted)', detail:'Could not retrieve upcoming bank earnings', ts:Date.now() };
+    }
+  },
+
+  // ── BoC rate via Finnhub ──────────────────────────────────
+  async bocRateFH() {
+    const fhKey = S.settings?.fhKey;
+    if (!fhKey) return;
+    try {
+      // Get current overnight rate proxy via 3-month T-bill (CA3M)
+      // or fetch BoC economic data
+      const r = await fetch(`https://finnhub.io/api/v1/indicator?symbol=USDCAD&resolution=M&from=${Math.floor(Date.now()/1000)-86400*30}&to=${Math.floor(Date.now()/1000)}&indicator=rsi&timeperiod=14&token=${fhKey}`,{signal:AbortSignal.timeout(5000)});
+      // Fallback: just show "check site"
+    } catch {}
+    if (!this._status['boc-rate']) {
+      this._status['boc-rate'] = { label:'bankofcanada.ca', color:'var(--cyan)', detail:'Check bankofcanada.ca for current rate & next decision date', ts:Date.now() };
+    }
+  },
+
+  async refresh() {
+    const btn = U.$('rw-refresh-btn');
+    if (btn) { btn.disabled=true; btn.textContent='Refreshing…'; }
+    this._alerts = [];
+
+    // Run all fetchers
+    const fetchers = this.ENTRIES.filter(e=>e.fetchFn).map(e=>e.fetchFn);
+    const unique = [...new Set(fetchers)];
+    for (const fn of unique) {
+      if (typeof this[fn] === 'function') {
+        await this[fn]();
+      }
+    }
+    // Fallback for BoC rate if bocRate() didn't populate
+    await this.bocRateFH();
+
+    // Set static upcoming-date statuses for non-live entries
+    this._setStaticStatuses();
+
+    this.render();
+    if (btn) { btn.disabled=false; btn.textContent='↻ Refresh All'; }
+    toast('Retirement Watch refreshed', 'success');
+  },
+
+  _setStaticStatuses() {
+    const now = new Date();
+    const month = now.getMonth(); // 0-indexed
+    const day = now.getDate();
+
+    // BoC FSR — May and Nov
+    if (!this._status['boc-fsr']) {
+      const nextFSR = month < 4 ? 'May 2026' : month < 10 ? 'Nov 2026' : 'May 2027';
+      this._status['boc-fsr'] = { label: nextFSR, color:'var(--cyan)', detail:'Financial Stability Report — biannual', ts:Date.now() };
+    }
+    // Credit Counselling — March
+    if (!this._status['ccs-survey']) {
+      const yr = month < 2 ? now.getFullYear() : now.getFullYear()+1;
+      this._status['ccs-survey'] = { label:`Mar 1, ${yr}`, color:'var(--yellow)', detail:'Annual survey — nomoredebts.org', ts:Date.now() };
+    }
+    // CMHC — Feb/May/Aug/Nov quarterly
+    if (!this._status['cmhc-delinq']) {
+      const quarters = [1,4,7,10]; // Feb=1,May=4,Aug=7,Nov=10
+      const nextQ = quarters.find(m=>m>month) || quarters[0];
+      const nextYear = nextQ <= month ? now.getFullYear()+1 : now.getFullYear();
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      this._status['cmhc-delinq'] = { label:`${months[nextQ]} 1`, color:'var(--red)', detail:'CMHC Mortgage Delinquency — quarterly', ts:Date.now() };
+    }
+    // Int'l Trade — monthly, ~5th week
+    if (!this._status['statcan-trade']) {
+      this._status['statcan-trade'] = { label:'Monthly', color:'var(--purple)', detail:'~5th week of month — statcan.gc.ca', ts:Date.now() };
+    }
+    // Debt Management Report — Sept
+    if (!this._status['fin-debt-mgmt']) {
+      const yr = month < 8 ? now.getFullYear() : now.getFullYear()+1;
+      this._status['fin-debt-mgmt'] = { label:`Sept 1, ${yr}`, color:'var(--orange)', detail:'Annual — canada.ca/en/department-finance', ts:Date.now() };
+    }
+    // BetterDwelling — ongoing weekly
+    if (!this._status['betterdwelling']) {
+      this._status['betterdwelling'] = { label:'Weekly', color:'var(--orange)', detail:'Check betterdwelling.com Sunday AM', ts:Date.now() };
+    }
+  },
+
+  clearAlerts() {
+    this._alerts = [];
+    this._renderAlerts();
+  },
+
+  init() {
+    this._setStaticStatuses();
+    this.render();
+    // Auto-refresh live data if Finnhub key is available
+    if (S.settings?.fhKey) this.refresh();
   },
 };
 
