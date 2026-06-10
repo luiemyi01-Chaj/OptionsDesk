@@ -1,40 +1,2881 @@
-# Simple GitHub Pages deployment for a static HTML site
-# Place this file at: .github/workflows/static.yml
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OptionsDesk — Trading Research Platform</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-name: Deploy static content to Pages
+<style>
+  :root {
+    --bg:      #0d1117;
+    --surface: #161d2b;
+    --card:    #1e2a3d;
+    --border:  #2e4060;
+    --border2: #3a5070;
+    --text:    #eaf2ff;
+    --muted:   #7a95b8;
+    --accent:  #3b82f6;
+    --accent2: #60a5fa;
+    --green:   #34d399;
+    --red:     #f87171;
+    --yellow:  #fbbf24;
+    --purple:  #a78bfa;
+    --cyan:    #22d3ee;
+    --orange:  #fb923c;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font:      'DM Sans', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(37,99,235,0.08) 0%, transparent 60%);
+  }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+  input, select, textarea {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 5px;
+    padding: 7px 10px;
+    font-family: var(--font);
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(37,99,235,0.15); }
+  input[type="checkbox"] { width: 14px; height: 14px; cursor: pointer; }
+  .btn {
+    border: none; border-radius: 5px; padding: 7px 14px; cursor: pointer;
+    font-family: var(--font); font-size: 12px; font-weight: 500;
+    transition: all 0.15s; display: inline-flex; align-items: center; gap: 5px;
+  }
+  .btn-blue  { background: var(--accent); color: #fff; }
+  .btn-blue:hover { background: var(--accent2); }
+  .btn-green { background: #065f46; color: #6ee7b7; border: 1px solid #047857; }
+  .btn-green:hover { background: #047857; }
+  .btn-red   { background: #7f1d1d; color: #fca5a5; border: 1px solid #b91c1c; }
+  .btn-red:hover { background: #991b1b; }
+  .btn-ghost { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--border2); background: var(--card); }
+  .btn-orange { background: #7c2d12; color: #fdba74; border: 1px solid #c2410c; }
+  .btn-orange:hover { background: #9a3412; }
+  .btn-xs { padding: 4px 9px; font-size: 11px; }
+  .btn-sm { padding: 6px 11px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  .card-sm { padding: 12px; }
+  #header {
+    background: rgba(8,12,20,0.9);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 40;
+  }
+  .tab-nav { border-bottom: 1px solid var(--border); }
+  .tab-btn {
+    padding: 12px 16px; font-size: 12px; font-weight: 500;
+    color: var(--muted); cursor: pointer; border: none; background: none;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+    font-family: var(--font); transition: all 0.15s; letter-spacing: 0.01em;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent2); border-bottom-color: var(--accent); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .up   { color: var(--green); }
+  .down { color: var(--red); }
+  .neutral { color: var(--muted); }
+  .dtable { width: 100%; border-collapse: collapse; }
+  .dtable thead th {
+    background: var(--surface); color: var(--muted); font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.05em; font-size: 10px;
+    padding: 8px 10px; text-align: left; position: sticky; top: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .dtable tbody tr { border-bottom: 1px solid rgba(30,45,66,0.5); }
+  .dtable tbody tr:hover { background: rgba(37,99,235,0.04); }
+  .dtable td { padding: 7px 10px; font-family: var(--font-mono); font-size: 11px; }
+  .itm-call { background: rgba(16,185,129,0.04) !important; }
+  .itm-put  { background: rgba(239,68,68,0.04) !important; }
+  .badge {
+    display: inline-flex; align-items: center; border-radius: 4px;
+    padding: 2px 7px; font-size: 10px; font-weight: 600; font-family: var(--font-mono);
+    letter-spacing: 0.03em;
+  }
+  .badge-green  { background: rgba(16,185,129,0.12); color: #34d399; border: 1px solid rgba(16,185,129,0.2); }
+  .badge-red    { background: rgba(239,68,68,0.12);  color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+  .badge-blue   { background: rgba(59,130,246,0.12); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); }
+  .badge-yellow { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.2); }
+  .badge-gray   { background: rgba(74,96,128,0.15);  color: var(--muted); border: 1px solid var(--border); }
+  .badge-orange { background: rgba(251,146,60,0.12); color: #fb923c; border: 1px solid rgba(251,146,60,0.2); }
+  .badge-purple { background: rgba(167,139,250,0.12); color: #a78bfa; border: 1px solid rgba(167,139,250,0.2); }
+  .wl-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px; cursor: pointer; transition: all 0.15s; position: relative; overflow: hidden;
+  }
+  .wl-card:hover { border-color: var(--border2); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+  .wl-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0; transition: opacity 0.15s;
+  }
+  .wl-card:hover::before { opacity: 1; }
+  .wl-card.up-card::before { background: linear-gradient(90deg, transparent, var(--green), transparent); opacity: 0.6; }
+  .wl-card.down-card::before { background: linear-gradient(90deg, transparent, var(--red), transparent); opacity: 0.6; }
+  .stat-box { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+  .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+  .stat-value { font-family: var(--font-mono); font-size: 22px; font-weight: 600; line-height: 1; }
+  .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 60; backdrop-filter: blur(4px); align-items: center; justify-content: center; }
+  .modal.open { display: flex; }
+  .modal-box { background: var(--card); border: 1px solid var(--border2); border-radius: 10px; padding: 24px; width: 100%; max-height: 90vh; overflow-y: auto; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  .loading-block { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 24px; gap: 10px; color: var(--muted); font-size: 12px; }
+  #toast-container { position: fixed; top: 60px; right: 16px; z-index: 999; display: flex; flex-direction: column; gap: 8px; }
+  .toast {
+    padding: 10px 14px; border-radius: 6px; font-size: 12px; max-width: 280px;
+    border: 1px solid; animation: slideIn 0.2s ease; font-family: var(--font);
+  }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+  .toast-info    { background: #0c1a2e; border-color: #1d4ed8; color: #93c5fd; }
+  .toast-success { background: #052e16; border-color: #047857; color: #6ee7b7; }
+  .toast-warn    { background: #1c1000; border-color: #b45309; color: #fcd34d; }
+  .toast-error   { background: #1c0505; border-color: #991b1b; color: #fca5a5; }
+  .mono { font-family: var(--font-mono); }
+  .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: block; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+  .overflow-table { overflow-x: auto; }
+  .signal-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; }
+  .pill-bull { background: rgba(16,185,129,0.15); color: #34d399; }
+  .pill-bear { background: rgba(239,68,68,0.15); color: #f87171; }
+  .pill-neut { background: rgba(74,96,128,0.15); color: var(--muted); }
+  .iv-low    { color: var(--green); }
+  .iv-mid    { color: var(--yellow); }
+  .iv-high   { color: var(--red); }
+  .progress-track { background: var(--surface); border-radius: 3px; height: 3px; overflow: hidden; }
+  .progress-fill  { height: 100%; border-radius: 3px; }
+  .chart-wrap { position: relative; }
+  #tab-technical canvas { pointer-events: none; }
 
-on:
-  push:
-    branches: ["main"]
-  workflow_dispatch:
+  /* ── MORNING BRIEF SPECIFIC ── */
+  .mb-header {
+    background: linear-gradient(135deg, rgba(251,146,60,0.08) 0%, rgba(59,130,246,0.06) 100%);
+    border: 1px solid rgba(251,146,60,0.2);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .mb-header::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--orange), var(--yellow), var(--accent));
+  }
+  .mb-ticker-row {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: grid;
+    grid-template-columns: 80px 90px 90px 1fr 90px 90px 90px 90px 90px;
+    gap: 8px;
+    align-items: center;
+    transition: border-color 0.15s;
+  }
+  .mb-ticker-row:hover { border-color: var(--border2); }
+  .mb-ticker-row.bull-row { border-left: 3px solid var(--green); }
+  .mb-ticker-row.bear-row { border-left: 3px solid var(--red); }
+  .mb-ticker-row.neut-row { border-left: 3px solid var(--muted); }
+  .mb-score-bar {
+    height: 4px; border-radius: 2px; background: var(--surface);
+    overflow: hidden; width: 100%;
+  }
+  .mb-score-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+  .mb-section-title {
+    font-size: 11px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+  }
+  .mb-play-btn {
+    background: linear-gradient(135deg, #1e3a5f, #0c1e3a);
+    border: 1px solid var(--accent);
+    color: var(--accent2);
+    border-radius: 6px;
+    padding: 8px 18px;
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .mb-play-btn:hover {
+    background: linear-gradient(135deg, #1e3a6f, #102040);
+    border-color: var(--accent2);
+    box-shadow: 0 0 12px rgba(59,130,246,0.2);
+  }
+  .mb-play-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .mb-progress-row {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; color: var(--muted); padding: 4px 0;
+  }
+  .mb-progress-row .done { color: var(--green); }
+  .mb-progress-row .fail { color: var(--red); }
+  .mb-progress-row .wait { color: var(--muted); }
+  .mb-opp-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .mb-opp-card:hover { border-color: var(--border2); transform: translateY(-1px); }
+  .mb-opp-card.call-opp { border-top: 2px solid var(--green); }
+  .mb-opp-card.put-opp  { border-top: 2px solid var(--red); }
+  .countdown-ring {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--orange);
+    background: rgba(251,146,60,0.08);
+    border: 1px solid rgba(251,146,60,0.2);
+    border-radius: 4px;
+    padding: 3px 8px;
+  }
+  @media (max-width: 1100px) {
+    .mb-ticker-row { grid-template-columns: 80px 80px 80px 1fr 80px 80px; }
+    .mb-hide-sm { display: none !important; }
+  }
+  @media (max-width: 768px) {
+    .tab-btn { padding: 10px 10px; font-size: 11px; }
+    .hide-mobile { display: none !important; }
+    .mb-ticker-row { grid-template-columns: 70px 80px 1fr 80px; }
+    .mb-hide-md { display: none !important; }
+  }
+</style>
+</head>
+<body>
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+<div id="header">
+  <div style="max-width:1600px;margin:0 auto;padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:48px;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--accent2);letter-spacing:-0.02em;">
+        ⬡ OPTIONS<span style="color:var(--text);">DESK</span>
+      </div>
+      <div id="market-pill" style="font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;background:rgba(74,96,128,0.15);color:var(--muted);border:1px solid var(--border);">● LOADING</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div id="header-time" style="font-family:var(--font-mono);font-size:11px;color:var(--muted);"></div>
+      <button class="btn btn-blue btn-sm" onclick="app.showAddTickerModal()">+ Ticker</button>
+      <button class="btn btn-ghost btn-sm" onclick="app.refreshAll()">↻ Refresh</button>
+    </div>
+  </div>
+  <div class="tab-nav" style="max-width:1600px;margin:0 auto;padding:0 16px;display:flex;gap:2px;">
+    <button class="tab-btn" data-tab="morning"   onclick="app.switchTab('morning')" style="color:var(--orange);border-bottom-color:transparent;">🌅 Morning Brief</button>
+    <button class="tab-btn active" data-tab="dashboard" onclick="app.switchTab('dashboard')">Dashboard</button>
+    <button class="tab-btn" data-tab="options"    onclick="app.switchTab('options')">Options Chain</button>
+    <button class="tab-btn" data-tab="technical"  onclick="app.switchTab('technical')">Technical Analysis</button>
+    <button class="tab-btn" data-tab="earnings"   onclick="app.switchTab('earnings')">Earnings</button>
+    <button class="tab-btn" data-tab="trades"     onclick="app.switchTab('trades')">Trade Log</button>
+    <button class="tab-btn" data-tab="retwatch"   onclick="app.switchTab('retwatch')" style="color:var(--cyan);">📅 Retirement Watch</button>
+    <button class="tab-btn" data-tab="settings"   onclick="app.switchTab('settings')">⚙ Settings</button>
+  </div>
+</div>
 
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
+<div id="toast-container"></div>
 
-jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+<div style="max-width:1600px;margin:0 auto;padding:16px;">
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
+  <!-- ══════════ MORNING BRIEF ══════════ -->
+  <section id="tab-morning" class="tab-panel">
+    <div class="mb-header">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+            <span style="font-size:16px;font-weight:700;color:var(--text);">Pre-Market Morning Brief</span>
+            <span id="mb-date-badge" class="badge badge-gray"></span>
+            <span id="mb-countdown" class="countdown-ring" style="display:none;"></span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);">
+            Scans your watchlist for technicals, IV rank, and top options setups. Run at 6:30 AM before market open.
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button id="mb-run-btn" class="mb-play-btn" onclick="MORNING.run()">
+            <span style="font-size:16px;">▶</span> Run Morning Brief
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="MORNING.clear()">Clear</button>
+        </div>
+      </div>
+    </div>
+    <div id="mb-progress" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:11px;">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Scanning…</div>
+      <div id="mb-progress-log"></div>
+    </div>
+    <div id="mb-market-context" style="display:none;margin-bottom:14px;">
+      <div class="mb-section-title">📊 Market Context</div>
+      <div id="mb-context-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;"></div>
+    </div>
+    <div id="mb-scorecard-section" style="display:none;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="mb-section-title" style="margin-bottom:0;">📋 Watchlist Scorecard</div>
+        <div style="font-size:10px;color:var(--muted);">Sorted by signal strength. Click row to open options chain.</div>
+      </div>
+      <div id="mb-scorecard-header" class="mb-ticker-row" style="background:var(--surface);border-color:var(--border);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;cursor:default;">
+        <div>Symbol</div><div>Price</div><div>Chg%</div>
+        <div style="display:flex;align-items:center;gap:4px;">Signal Score <span style="color:var(--muted);font-size:9px;">(RSI·MACD·BB·Trend)</span></div>
+        <div>RSI</div><div>MACD</div>
+        <div class="mb-hide-sm">BB%</div>
+        <div class="mb-hide-sm">Trend</div>
+        <div>Rating</div>
+      </div>
+      <div id="mb-scorecard" style="display:flex;flex-direction:column;gap:6px;margin-top:6px;"></div>
+    </div>
+    <div id="mb-opps-section" style="display:none;margin-bottom:14px;">
+      <div class="mb-section-title">🎯 Top Options Opportunities</div>
+      <div id="mb-opps-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;"></div>
+    </div>
+    <div id="mb-earnings-section" style="display:none;margin-bottom:14px;">
+      <div class="mb-section-title">📅 Earnings This Week</div>
+      <div id="mb-earnings-list"></div>
+    </div>
+    <div id="mb-checklist-section" style="display:none;margin-bottom:14px;">
+      <div class="mb-section-title">✅ Pre-Trade Risk Checklist</div>
+      <div id="mb-checklist-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
+    </div>
+    <div id="mb-empty" style="text-align:center;padding:60px 24px;color:var(--muted);">
+      <div style="font-size:48px;margin-bottom:12px;">🌅</div>
+      <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;">Ready for your morning brief</div>
+      <div style="font-size:12px;max-width:360px;margin:0 auto 20px;line-height:1.7;">
+        Click <strong style="color:var(--accent2);">Run Morning Brief</strong> to scan your watchlist for pre-market technicals, IV rank, and top options setups.
+        Best run at <strong style="color:var(--orange);">6:30 AM ET</strong> before market open.
+      </div>
+      <div style="font-size:11px;color:var(--border2);">Requires Finnhub API key configured in ⚙ Settings</div>
+    </div>
+  </section>
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
+  <!-- ══════════ DASHBOARD ══════════ -->
+  <section id="tab-dashboard" class="tab-panel active">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;" id="stats-grid">
+      <div class="stat-box"><div class="stat-label">Open Positions</div><div class="stat-value" id="s-open">0</div></div>
+      <div class="stat-box"><div class="stat-label">Closed P&L</div><div class="stat-value" id="s-pnl">$0</div></div>
+      <div class="stat-box"><div class="stat-label">Win Rate</div><div class="stat-value" id="s-wr">—</div></div>
+      <div class="stat-box"><div class="stat-label">Today's Trades</div><div class="stat-value" id="s-today">0</div></div>
+    </div>
+    <div id="watchlist-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:14px;">
+      <div class="loading-block" style="grid-column:1/-1;"><div class="spinner"></div><span>Loading watchlist…</span></div>
+    </div>
+    <div class="card card-sm">
+      <div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">📡 Alerts &amp; Notable Activity</div>
+      <div id="alerts-panel" style="color:var(--muted);font-size:12px;">Refresh to check for notable moves…</div>
+    </div>
+  </section>
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+  <!-- ══════════ OPTIONS CHAIN ══════════ -->
+  <section id="tab-options" class="tab-panel">
+    <div class="card card-sm" style="margin-bottom:12px;">
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+        <div>
+          <span class="label">Symbol</span>
+          <div style="display:flex;gap:6px;">
+            <input id="opt-symbol" type="text" style="width:110px;" placeholder="NVDA or TD.TO" onkeydown="if(event.key==='Enter')app.loadOptionsChain()">
+            <button class="btn btn-blue" onclick="app.loadOptionsChain()">Load Chain</button>
+          </div>
+        </div>
+        <div>
+          <span class="label">Expiry</span>
+          <select id="opt-expiry" style="width:150px;" onchange="app.loadOptionsForExpiry()">
+            <option value="">Select expiry…</option>
+          </select>
+        </div>
+        <div>
+          <span class="label">Display</span>
+          <select id="opt-filter" style="width:130px;" onchange="app.renderOptionsChain()">
+            <option value="both">Calls &amp; Puts</option>
+            <option value="calls">Calls Only</option>
+            <option value="puts">Puts Only</option>
+          </select>
+        </div>
+        <div>
+          <span class="label">Strikes</span>
+          <select id="opt-strikes" style="width:130px;" onchange="app.renderOptionsChain()">
+            <option value="all">All Strikes</option>
+            <option value="15">±15 from ATM</option>
+            <option value="10" selected>±10 from ATM</option>
+            <option value="5">±5 from ATM</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;padding-bottom:2px;">
+          <input type="checkbox" id="opt-itm" onchange="app.renderOptionsChain()">
+          <label for="opt-itm" style="font-size:11px;color:var(--muted);cursor:pointer;">ITM Only</label>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;padding-bottom:2px;">
+          <input type="checkbox" id="opt-hv" onchange="app.renderOptionsChain()">
+          <label for="opt-hv" style="font-size:11px;color:var(--muted);cursor:pointer;">High Vol (OI&gt;1000)</label>
+        </div>
+      </div>
+    </div>
+    <div id="opt-underlying" class="card card-sm" style="margin-bottom:12px;display:none;">
+      <div id="opt-underlying-content" style="display:flex;flex-wrap:wrap;gap:20px;font-family:var(--font-mono);font-size:11px;"></div>
+    </div>
+    <div id="opt-chain-container">
+      <div class="loading-block"><span style="color:var(--muted);">Enter a symbol and click "Load Chain"</span></div>
+    </div>
+  </section>
+
+  <!-- ══════════ TECHNICAL ANALYSIS ══════════ -->
+  <section id="tab-technical" class="tab-panel">
+    <div class="card card-sm" style="margin-bottom:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+      <div>
+        <span class="label">Symbol</span>
+        <input id="tech-symbol" type="text" style="width:110px;" placeholder="NVDA or TD.TO" onkeydown="if(event.key==='Enter')app.loadTechnical()">
+      </div>
+      <div>
+        <span class="label">Period</span>
+        <select id="tech-period" style="width:110px;">
+          <option value="1mo">1 Month</option>
+          <option value="3mo" selected>3 Months</option>
+          <option value="6mo">6 Months</option>
+          <option value="1y">1 Year</option>
+        </select>
+      </div>
+      <button class="btn btn-blue" onclick="app.loadTechnical()">Analyze</button>
+      <div id="tech-loading" style="display:none;align-items:center;gap:6px;font-size:11px;color:var(--muted);">
+        <div class="spinner" style="width:14px;height:14px;"></div> Analyzing…
+      </div>
+    </div>
+    <div id="tech-signals" style="display:none;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;">
+      <div class="stat-box"><div class="stat-label">RSI (14)</div><div class="stat-value mono" id="sig-rsi">—</div><div id="sig-rsi-lbl" style="font-size:10px;margin-top:4px;"></div></div>
+      <div class="stat-box"><div class="stat-label">MACD</div><div class="stat-value" id="sig-macd">—</div><div id="sig-macd-lbl" style="font-size:10px;margin-top:4px;"></div></div>
+      <div class="stat-box"><div class="stat-label">Bollinger %</div><div class="stat-value mono" id="sig-bb">—</div><div id="sig-bb-lbl" style="font-size:10px;margin-top:4px;"></div></div>
+      <div class="stat-box"><div class="stat-label">Trend (SMA)</div><div class="stat-value" id="sig-trend">—</div><div id="sig-trend-lbl" style="font-size:10px;margin-top:4px;"></div></div>
+      <div class="stat-box" style="border-color:var(--accent);"><div class="stat-label">Overall Signal</div><div class="stat-value" id="sig-overall">—</div><div id="sig-overall-lbl" style="font-size:10px;margin-top:4px;"></div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="card">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Price + Bollinger Bands (20,2)</div>
+        <div class="chart-wrap"><img id="price-chart" style="width:100%;height:180px;display:block;image-rendering:crisp-edges;" alt="Price chart"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="card">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">RSI (14)</div>
+          <div class="chart-wrap"><img id="rsi-chart" style="width:100%;height:120px;display:block;image-rendering:crisp-edges;" alt="RSI chart"></div>
+        </div>
+        <div class="card">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">MACD (12,26,9)</div>
+          <div class="chart-wrap"><img id="macd-chart" style="width:100%;height:120px;display:block;image-rendering:crisp-edges;" alt="MACD chart"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ EARNINGS ══════════ -->
+  <section id="tab-earnings" class="tab-panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div style="font-size:14px;font-weight:600;">Earnings &amp; Catalyst Calendar</div>
+      <button class="btn btn-ghost btn-sm" onclick="app.loadEarnings()">↻ Refresh</button>
+    </div>
+    <div id="earnings-container">
+      <div class="loading-block"><div class="spinner"></div><span>Loading earnings…</span></div>
+    </div>
+  </section>
+
+  <!-- ══════════ TRADE LOG ══════════ -->
+  <section id="tab-trades" class="tab-panel">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">
+      <div class="stat-box"><div class="stat-label">Total P&L</div><div class="stat-value" id="tl-pnl">$0.00</div></div>
+      <div class="stat-box"><div class="stat-label">Win Rate</div><div class="stat-value" id="tl-wr">—</div></div>
+      <div class="stat-box"><div class="stat-label">Avg Win / Avg Loss</div><div class="stat-value" style="font-size:16px;" id="tl-wl">— / —</div></div>
+      <div class="stat-box"><div class="stat-label">Open Positions</div><div class="stat-value" id="tl-open">0</div></div>
+    </div>
+    <div class="card" style="margin-bottom:14px;">
+      <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:12px;">➕ Log New Trade</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:8px;">
+        <div><span class="label">Symbol</span><input id="t-symbol" type="text" style="width:100%;" placeholder="NVDA or TD.TO"></div>
+        <div><span class="label">Strategy</span>
+          <select id="t-type" style="width:100%;">
+            <option>Long Call</option><option>Long Put</option>
+            <option>Short Call</option><option>Short Put</option>
+            <option>Call Spread</option><option>Put Spread</option>
+            <option>Iron Condor</option><option>Straddle</option>
+            <option>Strangle</option><option>Covered Call</option>
+            <option>Cash-Secured Put</option>
+          </select>
+        </div>
+        <div><span class="label">Strike ($)</span><input id="t-strike" type="number" style="width:100%;" placeholder="850"></div>
+        <div><span class="label">Expiry</span><input id="t-expiry" type="date" style="width:100%;"></div>
+        <div><span class="label">Contracts</span><input id="t-contracts" type="number" style="width:100%;" value="1" min="1"></div>
+        <div><span class="label">Entry Price</span><input id="t-entry" type="number" step="0.01" style="width:100%;" placeholder="5.50"></div>
+        <div><span class="label">Entry Date</span><input id="t-date" type="date" style="width:100%;"></div>
+        <div style="display:flex;align-items:flex-end;">
+          <button class="btn btn-green" style="width:100%;" onclick="app.addTrade()">Add Trade</button>
+        </div>
+      </div>
+      <div><span class="label">Notes / Thesis</span><input id="t-notes" type="text" style="width:100%;" placeholder="Trade thesis, catalyst, setup…"></div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:12px;font-weight:600;margin-bottom:8px;">Open Positions</div>
+      <div class="overflow-table card card-sm" style="padding:0;">
+        <table class="dtable">
+          <thead><tr>
+            <th>Symbol</th><th>Strategy</th><th>Strike</th><th>Expiry</th>
+            <th>Qty</th><th>Entry</th><th>Current</th><th>Open P&L</th>
+            <th>DTE</th><th>Notes</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="open-tbody">
+            <tr><td colspan="11" style="text-align:center;color:var(--muted);padding:24px;">No open positions</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="font-size:12px;font-weight:600;">Trade History</div>
+        <button class="btn btn-ghost btn-xs" onclick="app.exportCSV()">↓ Export CSV</button>
+      </div>
+      <div class="overflow-table card card-sm" style="padding:0;">
+        <table class="dtable">
+          <thead><tr>
+            <th>Date</th><th>Symbol</th><th>Strategy</th><th>Strike/Expiry</th>
+            <th>Qty</th><th>Entry</th><th>Exit</th><th>P&L ($)</th><th>Return %</th><th>Notes</th>
+          </tr></thead>
+          <tbody id="closed-tbody">
+            <tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px;">No trade history</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ RETIREMENT WATCH ══════════ -->
+  <section id="tab-retwatch" class="tab-panel">
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,rgba(34,211,238,0.08) 0%,rgba(59,130,246,0.06) 100%);border:1px solid rgba(34,211,238,0.2);border-radius:10px;padding:18px 20px;margin-bottom:16px;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--cyan),var(--accent),var(--purple));"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px;">📅 Retirement Intelligence Calendar</div>
+          <div style="font-size:11px;color:var(--muted);">Key Canadian economic releases, policy events &amp; earnings that drive your covered call &amp; RRIF strategy. Live status updates below.</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" onclick="RW.refresh()" id="rw-refresh-btn">↻ Refresh All</button>
+          <button class="btn btn-ghost btn-sm" onclick="RW.clearAlerts()">✕ Clear Alerts</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live alerts strip -->
+    <div id="rw-alerts" style="display:none;margin-bottom:14px;"></div>
+
+    <!-- Calendar table -->
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px;">
+      <table class="dtable" id="rw-table">
+        <thead><tr>
+          <th style="width:130px;">Category</th>
+          <th>Source / Event</th>
+          <th style="width:110px;">Frequency</th>
+          <th style="width:130px;">Next / Schedule</th>
+          <th style="width:90px;">Status</th>
+          <th>Why It Matters for Your Strategy</th>
+        </tr></thead>
+        <tbody id="rw-tbody">
+          <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px;">
+            <div class="spinner" style="margin:0 auto 8px;"></div>Loading calendar…
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Tip bar -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 14px;font-size:11px;color:var(--muted);">
+      💡 <strong style="color:var(--text);">Tip:</strong> Add each event as a recurring reminder in Outlook or Google Calendar labelled <em>"Retirement Watch"</em>.
+      BoC rate decisions drive GIC rates &amp; bank covered-call risk. CPI releases affect RRIF purchasing power. Earnings calls signal covered call timing.
+    </div>
+  </section>
+
+  <!-- ══════════ SETTINGS ══════════ -->
+  <section id="tab-settings" class="tab-panel">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div class="card">
+        <div style="font-size:12px;font-weight:600;margin-bottom:12px;">📋 Watchlist</div>
+        <div id="settings-wl" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
+        <div style="display:flex;gap:6px;">
+          <input id="s-add-ticker" type="text" style="flex:1;text-transform:uppercase;" placeholder="NVDA, TD.TO, ENB.TO…" onkeydown="if(event.key==='Enter')app.addTickersFromSettings()">
+          <button class="btn btn-blue" onclick="app.addTickersFromSettings()">Add</button>
+        </div>
+        <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px;">
+          <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">🇨🇦 Quick-add TSX names</div>
+          <!-- FIX: TSX quick-add buttons are now rendered by JS into this container -->
+          <div id="tsx-quickadd-grid" style="display:flex;flex-wrap:wrap;gap:5px;"></div>
+          <div style="margin-top:8px;font-size:10px;color:var(--muted);line-height:1.6;">
+            🇺🇸 US: enter symbol as-is — <code style="color:var(--cyan);">NVDA</code> · <code style="color:var(--cyan);">SPY</code><br>
+            🇨🇦 TSX: append <code style="color:var(--cyan);">.TO</code> &nbsp;·&nbsp; TSXV: <code style="color:var(--cyan);">.V</code> &nbsp;·&nbsp; CSE: <code style="color:var(--cyan);">.CN</code>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-size:12px;font-weight:600;margin-bottom:4px;">📡 Market Data API</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:10px;line-height:1.6;">
+          <strong style="color:var(--text);">Quotes &amp; Charts:</strong> Finnhub — free, 60 calls/min, real-time.<br>
+          <strong style="color:var(--text);">Options (primary):</strong> Cloudflare Worker → Yahoo Finance.<br>
+          <strong style="color:var(--text);">Options (fallback):</strong> Market Data App — 24hr delayed on free tier.
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div>
+            <span class="label">Finnhub API Key</span>
+            <input id="s-fh-key" type="password" style="width:100%;" placeholder="your_finnhub_key">
+            <div style="font-size:10px;color:var(--muted);margin-top:3px;"><a href="https://finnhub.io/register" target="_blank" style="color:var(--accent2);">finnhub.io/register</a> → free → copy API key</div>
+          </div>
+          <button class="btn btn-blue" onclick="app.saveFHKey()">Save &amp; Test Finnhub</button>
+          <div id="fh-status" style="font-size:11px;color:var(--muted);min-height:14px;"></div>
+          <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
+          <div>
+            <span class="label">Cloudflare Worker URL (Options — Primary)</span>
+            <div style="font-size:10px;color:var(--muted);margin-bottom:6px;line-height:1.6;">
+              Required for options chain data. Free 2-min setup at
+              <a href="https://workers.cloudflare.com" target="_blank" style="color:var(--accent2);">workers.cloudflare.com</a>.
+              <button onclick="U.$('worker-code-settings').style.display=U.$('worker-code-settings').style.display==='none'?'block':'none'" style="background:none;border:none;color:var(--accent2);cursor:pointer;font-size:10px;padding:0;margin-left:4px;">Show worker code ▾</button>
+            </div>
+            <div id="worker-code-settings" style="display:none;margin-bottom:8px;position:relative;">
+              <textarea readonly style="width:100%;height:120px;font-family:var(--font-mono);font-size:10px;background:#0a0f1a;border:1px solid var(--border);border-radius:4px;padding:8px;color:var(--muted);resize:none;">export default {
+  async fetch(request) {
+    const url = new URL(request.url);
+    const target = url.searchParams.get('url');
+    if (!target) return new Response('Missing url param', { status: 400 });
+    const crumbResp = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
+      headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': '*/*', 'Referer': 'https://finance.yahoo.com' },
+    });
+    const crumb = await crumbResp.text();
+    const finalUrl = crumb && !crumb.includes('<!') ? target + (target.includes('?') ? '&' : '?') + 'crumb=' + encodeURIComponent(crumb.trim()) : target;
+    const resp = await fetch(finalUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Accept': 'application/json, */*',
+        'Referer': 'https://finance.yahoo.com',
+        'Origin': 'https://finance.yahoo.com',
+      },
+    });
+    const body = await resp.text();
+    return new Response(body, {
+      status: resp.status,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    });
+  }
+};</textarea>
+              <button onclick="(()=>{const t=this.previousElementSibling;t.select();document.execCommand('copy');toast('Worker code copied!','success');})()" style="position:absolute;top:6px;right:6px;background:var(--accent);color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;">Copy</button>
+            </div>
+            <input id="s-cf-worker" type="text" style="width:100%;" placeholder="https://options-proxy.yourname.workers.dev">
+          </div>
+          <button class="btn btn-blue" onclick="app.saveCFWorker()">Save &amp; Test Worker</button>
+          <div id="cf-status" style="font-size:11px;color:var(--muted);min-height:14px;"></div>
+          <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
+          <div>
+            <span class="label">Market Data App Token (Options — Fallback)</span>
+            <input id="s-mda-key" type="password" style="width:100%;" placeholder="your_marketdata_token">
+          </div>
+          <button class="btn btn-blue" onclick="app.saveMDAKey()">Save &amp; Test Market Data</button>
+          <div id="mda-status" style="font-size:11px;color:var(--muted);min-height:14px;"></div>
+          <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
+          <div id="cache-badge" style="font-size:10px;color:var(--cyan);min-height:14px;"></div>
+          <button class="btn btn-ghost btn-sm" onclick="CACHE.clear();MKT._updateCacheDisplay();toast('Cache cleared','info');">🗑 Clear Data Cache</button>
+        </div>
+      </div>
+
+      <!-- Morning Brief Settings -->
+      <div class="card" style="border-color:rgba(251,146,60,0.3);">
+        <div style="font-size:12px;font-weight:600;margin-bottom:12px;">🌅 Morning Brief Settings</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--surface);border-radius:6px;">
+            <div>
+              <div style="font-size:11px;font-weight:600;">Auto-open on pre-market load</div>
+              <div style="font-size:10px;color:var(--muted);">Switches to Morning Brief tab when you open the app between 6:00–9:30 AM ET</div>
+            </div>
+            <label style="display:flex;align-items:center;cursor:pointer;gap:6px;">
+              <input type="checkbox" id="mb-auto-open" onchange="app.saveMBSettings()" style="width:16px;height:16px;">
+              <span style="font-size:11px;color:var(--muted);">Enable</span>
+            </label>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--surface);border-radius:6px;">
+            <div>
+              <div style="font-size:11px;font-weight:600;">Auto-run brief on open</div>
+              <div style="font-size:10px;color:var(--muted);">Automatically runs the scan (not just switches tab) during pre-market hours</div>
+            </div>
+            <label style="display:flex;align-items:center;cursor:pointer;gap:6px;">
+              <input type="checkbox" id="mb-auto-run" onchange="app.saveMBSettings()" style="width:16px;height:16px;">
+              <span style="font-size:11px;color:var(--muted);">Enable</span>
+            </label>
+          </div>
+          <div>
+            <span class="label">Min RSI oversold threshold</span>
+            <input id="mb-rsi-low" type="number" style="width:100%;" value="35" min="10" max="45" placeholder="35">
+            <div style="font-size:10px;color:var(--muted);margin-top:3px;">RSI below this = bullish signal (default 35 for pre-mkt, 30 is classic oversold)</div>
+          </div>
+          <div>
+            <span class="label">Max RSI overbought threshold</span>
+            <input id="mb-rsi-high" type="number" style="width:100%;" value="65" min="55" max="80" placeholder="65">
+            <div style="font-size:10px;color:var(--muted);margin-top:3px;">RSI above this = bearish signal (default 65 pre-mkt, 70 is classic overbought)</div>
+          </div>
+          <div>
+            <span class="label">Minimum score to show in Top Opportunities</span>
+            <select id="mb-min-score" style="width:100%;" onchange="app.saveMBSettings()">
+              <option value="1">Score ≥ 1 (show more)</option>
+              <option value="2" selected>Score ≥ 2 (recommended)</option>
+              <option value="3">Score ≥ 3 (high conviction only)</option>
+            </select>
+          </div>
+          <button class="btn btn-blue" onclick="app.saveMBSettings()">Save Morning Brief Settings</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="font-size:12px;font-weight:600;margin-bottom:12px;">📊 Google Sheets Sync</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div><span class="label">Spreadsheet ID</span><input id="s-sheet-id" type="text" style="width:100%;" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms"></div>
+          <div><span class="label">Google API Key (read)</span><input id="s-api-key" type="password" style="width:100%;" placeholder="AIza…"></div>
+          <div><span class="label">OAuth Client ID (write)</span><input id="s-client-id" type="text" style="width:100%;" placeholder="xxx.apps.googleusercontent.com"></div>
+          <button class="btn btn-blue" onclick="app.saveSheetsConfig()">Save &amp; Test</button>
+          <div id="sheets-status" style="font-size:11px;color:var(--muted);"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-size:12px;font-weight:600;margin-bottom:12px;">⚠️ Risk Parameters</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div><span class="label">Account Size ($)</span><input id="r-account" type="number" style="width:100%;" placeholder="50000"></div>
+          <div><span class="label">Max Position Size ($)</span><input id="r-position" type="number" style="width:100%;" placeholder="5000"></div>
+          <div><span class="label">Max Daily Loss ($)</span><input id="r-daily-loss" type="number" style="width:100%;" placeholder="500"></div>
+          <div><span class="label">Default Contracts</span><input id="r-contracts" type="number" style="width:100%;" placeholder="1"></div>
+          <button class="btn btn-blue" onclick="app.saveRisk()">Save</button>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-size:12px;font-weight:600;margin-bottom:12px;">🗄️ Data Management</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <button class="btn btn-blue" onclick="app.syncToSheets()">↑ Sync Trades → Google Sheets</button>
+          <button class="btn btn-blue" onclick="app.importFromSheets()">↓ Import from Google Sheets</button>
+          <button class="btn btn-green" onclick="app.exportJSON()">↓ Export Backup (JSON)</button>
+          <button class="btn btn-ghost" onclick="app.importJSON()">↑ Import Backup (JSON)</button>
+          <hr class="divider">
+          <button class="btn btn-red" onclick="app.resetAll()">⚠️ Reset All Data</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- MODALS -->
+<div id="modal-add-ticker" class="modal">
+  <div class="modal-box" style="max-width:360px;">
+    <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Add Tickers to Watchlist</div>
+    <input id="m-ticker-input" type="text" style="width:100%;margin-bottom:8px;" placeholder="NVDA, TD.TO, ENB.TO, SPY…" onkeydown="if(event.key==='Enter')app.confirmAddTicker()">
+    <div style="font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
+      Separate multiple tickers with commas.<br>
+      🇺🇸 US: <code style="color:var(--cyan);">NVDA, SPY, AMD</code><br>
+      🇨🇦 TSX: append <strong style="color:var(--accent2);">.TO</strong> — <code style="color:var(--cyan);">TD.TO, RY.TO, ENB.TO, SU.TO</code><br>
+      TSXV: <code style="color:var(--cyan);">.V</code> &nbsp;·&nbsp; CSE: <code style="color:var(--cyan);">.CN</code>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-blue" style="flex:1;" onclick="app.confirmAddTicker()">Add</button>
+      <button class="btn btn-ghost" style="flex:1;" onclick="app.closeModal('modal-add-ticker')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-close-trade" class="modal">
+  <div class="modal-box" style="max-width:380px;">
+    <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Close Position</div>
+    <input type="hidden" id="m-close-id">
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
+      <div><span class="label">Exit Price (per contract premium)</span><input id="m-exit-price" type="number" step="0.01" style="width:100%;" placeholder="7.50"></div>
+      <div><span class="label">Exit Date</span><input id="m-exit-date" type="date" style="width:100%;"></div>
+      <div><span class="label">Exit Notes</span><input id="m-exit-notes" type="text" style="width:100%;" placeholder="Stop hit, target reached, expired…"></div>
+    </div>
+    <div id="m-pnl-preview" style="font-family:var(--font-mono);font-size:13px;font-weight:600;margin-bottom:14px;padding:10px;background:var(--surface);border-radius:6px;text-align:center;"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-green" style="flex:1;" onclick="app.confirmClose()">Close Position</button>
+      <button class="btn btn-ghost" style="flex:1;" onclick="app.closeModal('modal-close-trade')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+const CFG = {
+  PROXY1:  'https://corsproxy.io/?url=',
+  PROXY2:  'https://api.allorigins.win/raw?url=',
+  PROXY3:  'https://api.codetabs.com/v1/proxy?quest=',
+  YF1:     'https://query1.finance.yahoo.com',
+  YF2:     'https://query2.finance.yahoo.com',
+  RFR:     0.053,
+  DEFAULT_WL: ['NVDA','AMD','GOOGL','SPY','TD.TO','RY.TO','BNS.TO','BMO.TO','CM.TO','ENB.TO','CNQ.TO','SU.TO'],
+};
+
+// ─── FIX 1: symId() — sanitise any symbol into a valid HTML element ID ───────
+// Dots in IDs (e.g. "TD.TO") cause getElementById to fail silently because
+// browsers treat dots as CSS class separators in querySelector, and some engines
+// trip on them in getElementById too.  Replace every non-alphanumeric char → '-'.
+function symId(sym) {
+  return 'card-' + sym.replace(/[^a-zA-Z0-9]/g, '-');
+}
+
+// ─── TSX / EXCHANGE UTILITIES ─────────────────────────────────────────────────
+const TSX = {
+  isCanadian: sym => /\.(TO|V|CN|NE)$/i.test(sym),
+  normalise(raw) {
+    const s = raw.trim().toUpperCase();
+    const stripped = s.replace(/:CA$|:TSX$|:TSV$/, '');
+    if (/\.(TO|V|CN|NE)$/.test(stripped)) return stripped;
+    if (stripped.endsWith('.TO')) return stripped;
+    return stripped;
+  },
+  exchangeLabel(sym) {
+    if (/\.TO$/i.test(sym))  return 'TSX';
+    if (/\.V$/i.test(sym))   return 'TSXV';
+    if (/\.CN$/i.test(sym))  return 'CSE';
+    if (/\.NE$/i.test(sym))  return 'NEO';
+    return 'US';
+  },
+  displaySym(sym) { return sym.replace(/\.(TO|V|CN|NE)$/i, ''); },
+  // ── FINNHUB SYMBOL CONVERSION ────────────────────────────────────────────────
+  // Finnhub's quote endpoint wants the bare symbol with NO exchange suffix:
+  //   TD.TO → TD,  RY.TO → RY,  NVDA → NVDA (US unchanged)
+  // Finnhub's candle (history) endpoint wants exchange:symbol format:
+  //   TD.TO → TO:TD,  BCE.TO → TO:BCE,  NVDA → NVDA (US unchanged)
+  fhQuoteSym(sym) {
+    // Strip exchange suffix — Finnhub quote API resolves by bare ticker
+    return sym.replace(/\.(TO|V|CN|NE)$/i, '');
+  },
+  fhCandleSym(sym) {
+    if (/\.TO$/i.test(sym))  return 'TO:'    + sym.replace(/\.TO$/i, '');
+    if (/\.V$/i.test(sym))   return 'TSX-V:' + sym.replace(/\.V$/i, '');
+    if (/\.CN$/i.test(sym))  return 'CSE:'   + sym.replace(/\.CN$/i, '');
+    if (/\.NE$/i.test(sym))  return 'NEO:'   + sym.replace(/\.NE$/i, '');
+    return sym;  // US symbol — pass through unchanged
+  },
+  fhSym: sym => sym,   // kept for backwards compat; prefer fhQuoteSym/fhCandleSym
+  yfSym: sym => sym,
+  currencyNote(sym) {
+    if (TSX.isCanadian(sym)) return 'CAD';
+    return 'USD';
+  },
+};
+
+const S = {
+  watchlist: [], quotes: {}, optionsRaw: {}, trades: [], settings: {},
+  charts: {}, curOptSym: null, curOptExp: null, curTechSym: null,
+};
+
+const U = {
+  $:  id => document.getElementById(id),
+  fp: n  => n != null ? '$'+Math.abs(+n).toFixed(2) : '—',
+  fpS:n  => n != null ? (n>=0?'+$':'-$')+Math.abs(+n).toFixed(2) : '—',
+  pp: n  => n != null ? (n>0?'+':'')+((+n)*100).toFixed(1)+'%' : '—',
+  fn: n  => n != null ? (+n).toLocaleString() : '—',
+  fd: ts => ts ? new Date(ts*1000).toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'2-digit'}) : '—',
+  today:  () => new Date().toISOString().split('T')[0],
+  dte:   exp => exp ? Math.ceil((new Date(exp)-Date.now())/864e5) : null,
+  uid:   ()  => Math.random().toString(36).substr(2,9),
+  clr:   n   => n > 0 ? 'up' : n < 0 ? 'down' : 'neutral',
+  Ncdf: x => {
+    const a1=.254829592,a2=-.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=.3275911;
+    const s = x<0?-1:1; x=Math.abs(x)/Math.sqrt(2);
+    const t=1/(1+p*x);
+    return .5*(1+s*(1-((((a5*t+a4)*t+a3)*t+a2)*t+a1)*t*Math.exp(-x*x)));
+  },
+  Npdf: x => Math.exp(-.5*x*x)/Math.sqrt(2*Math.PI),
+};
+
+const BS = {
+  d1: (S,K,T,r,v) => (Math.log(S/K)+(r+.5*v*v)*T)/(v*Math.sqrt(T)),
+  price(S,K,T,r,v,type){
+    if(T<=0||v<=0)return 0;
+    const d1=BS.d1(S,K,T,r,v), d2=d1-v*Math.sqrt(T);
+    return type==='call' ? S*U.Ncdf(d1)-K*Math.exp(-r*T)*U.Ncdf(d2)
+                         : K*Math.exp(-r*T)*U.Ncdf(-d2)-S*U.Ncdf(-d1);
+  },
+  greeks(S,K,T,r,v,type){
+    if(T<=0||v<=0)return{delta:0,gamma:0,theta:0,vega:0};
+    const d1v=BS.d1(S,K,T,r,v), d2v=d1v-v*Math.sqrt(T);
+    const N=U.Ncdf, n=U.Npdf;
+    const delta = type==='call' ? N(d1v) : N(d1v)-1;
+    const gamma = n(d1v)/(S*v*Math.sqrt(T));
+    const theta = type==='call'
+      ? ((-S*n(d1v)*v)/(2*Math.sqrt(T))-r*K*Math.exp(-r*T)*N(d2v))/365
+      : ((-S*n(d1v)*v)/(2*Math.sqrt(T))+r*K*Math.exp(-r*T)*N(-d2v))/365;
+    const vega = S*n(d1v)*Math.sqrt(T)/100;
+    return{delta,gamma,theta,vega};
+  },
+};
+
+const IND = {
+  ema(data,p){
+    const k=2/(p+1), r=[data[0]];
+    for(let i=1;i<data.length;i++) r.push(data[i]*k+r[i-1]*(1-k));
+    return r;
+  },
+  sma(data,p){
+    return data.map((_,i)=>i<p-1?null:data.slice(i-p+1,i+1).reduce((a,b)=>a+b,0)/p);
+  },
+  rsi(data,p=14){
+    const ch=data.slice(1).map((v,i)=>v-data[i]);
+    const gains=ch.map(c=>c>0?c:0), losses=ch.map(c=>c<0?-c:0);
+    const r=[null];
+    let ag=gains.slice(0,p).reduce((a,b)=>a+b,0)/p;
+    let al=losses.slice(0,p).reduce((a,b)=>a+b,0)/p;
+    for(let i=0;i<p-1;i++) r.push(null);
+    r.push(al===0?100:100-(100/(1+ag/al)));
+    for(let i=p;i<ch.length;i++){
+      ag=(ag*(p-1)+gains[i])/p; al=(al*(p-1)+losses[i])/p;
+      r.push(al===0?100:100-(100/(1+ag/al)));
+    }
+    return r;
+  },
+  macd(data,f=12,s=26,sig=9){
+    const ef=IND.ema(data,f), es=IND.ema(data,s);
+    const ml=ef.map((v,i)=>v-es[i]);
+    const sl=[...Array(s-1).fill(null),...IND.ema(ml.slice(s-1),sig)];
+    const hist=ml.map((v,i)=>sl[i]!=null?v-sl[i]:null);
+    return{macdLine:ml,signalLine:sl,histogram:hist};
+  },
+  bb(data,p=20,k=2){
+    const mid=IND.sma(data,p);
+    const up=[],lo=[];
+    for(let i=0;i<data.length;i++){
+      if(mid[i]==null){up.push(null);lo.push(null);continue;}
+      const sl=data.slice(i-p+1,i+1), m=mid[i];
+      const sd=Math.sqrt(sl.reduce((a,b)=>a+(b-m)**2,0)/p)*k;
+      up.push(m+sd); lo.push(m-sd);
+    }
+    return{mid,up,lo};
+  },
+};
+
+const CACHE = {
+  _store: {},
+  TTL_QUOTE:   5  * 60 * 1000,
+  TTL_HISTORY: 30 * 60 * 1000,
+  TTL_OPTIONS: 10 * 60 * 1000,
+  set(key,value,ttl){ this._store[key]={value,exp:Date.now()+ttl,ts:Date.now()}; },
+  get(key){
+    const e=this._store[key];
+    if(!e) return null;
+    if(Date.now()>e.exp){delete this._store[key];return null;}
+    return e;
+  },
+  ageStr(key){
+    const e=this._store[key]; if(!e) return null;
+    const s=Math.floor((Date.now()-e.ts)/1000);
+    return s<60?`${s}s ago`:`${Math.floor(s/60)}m ago`;
+  },
+  size(){ return Object.keys(this._store).filter(k=>this.get(k)).length; },
+  clear(){ this._store={}; },
+};
+
+const MKT = {
+  async fetch(url){
+    const proxies=[CFG.PROXY1,CFG.PROXY2,CFG.PROXY3];
+    for(const proxy of proxies){
+      try{
+        const r=await fetch(proxy+encodeURIComponent(url),{signal:AbortSignal.timeout(10000)});
+        if(!r.ok) continue;
+        const text=await r.text();
+        if(!text||text.trim().startsWith('<')) continue;
+        return JSON.parse(text);
+      }catch{}
+    }
+    return null;
+  },
+
+  async _fhQuote(sym,key){
+    try{
+      // FIX: Finnhub quote endpoint uses bare symbol — TD.TO must become TD
+      const fhSym = TSX.fhQuoteSym(sym);
+      const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${fhSym}&token=${key}`,{signal:AbortSignal.timeout(8000)});
+      if(!r.ok) return null;
+      const d=await r.json();
+      if(!d||!d.c) return null;
+      return {
+        symbol:sym, shortName:sym,
+        regularMarketPrice: d.c,
+        regularMarketChange: d.d||0,
+        regularMarketChangePercent: d.dp||0,
+        regularMarketVolume: 0,
+        fiftyTwoWeekHigh: d.h||0,
+        fiftyTwoWeekLow:  d.l||0,
+        prevClose: d.pc||0,
+        _src:'Finnhub',
+      };
+    }catch{return null;}
+  },
+
+  // FIX: Yahoo Finance quote fallback — used when Finnhub returns no data for a symbol
+  // Yahoo Finance accepts .TO suffix natively via the v8 chart endpoint (no proxy needed
+  // for quote data since we extract it from a 1-day range chart call through the CORS proxy).
+  async _yfQuote(sym){
+    try{
+      const url=`${CFG.YF1}/v8/finance/chart/${sym}?range=1d&interval=1d`;
+      const d=await this.fetch(url);
+      const r=d?.chart?.result?.[0];
+      if(!r) return null;
+      const meta=r.meta||{};
+      const close=meta.regularMarketPrice||meta.previousClose;
+      if(!close) return null;
+      return {
+        symbol:sym, shortName:meta.symbol||sym,
+        regularMarketPrice: close,
+        regularMarketChange: meta.regularMarketPrice&&meta.previousClose ? meta.regularMarketPrice-meta.previousClose : 0,
+        regularMarketChangePercent: meta.regularMarketPrice&&meta.previousClose ? ((meta.regularMarketPrice-meta.previousClose)/meta.previousClose)*100 : 0,
+        regularMarketVolume: meta.regularMarketVolume||0,
+        fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh||0,
+        fiftyTwoWeekLow:  meta.fiftyTwoWeekLow||0,
+        prevClose: meta.previousClose||0,
+        _src:'Yahoo',
+      };
+    }catch{return null;}
+  },
+
+  async _mdaExpirations(sym, token){
+    try{
+      const r=await fetch(`https://api.marketdata.app/v1/options/expirations/${sym}/`,{
+        headers:{'Authorization':`Token ${token}`},signal:AbortSignal.timeout(10000)});
+      if(!r.ok) return null;
+      const d=await r.json();
+      return d?.s==='ok'?d.expirations:null;
+    }catch{return null;}
+  },
+
+  async _mdaChain(sym, expDate, token){
+    try{
+      const r=await fetch(`https://api.marketdata.app/v1/options/chain/${sym}/?expiration=${expDate}`,{
+        headers:{'Authorization':`Token ${token}`},signal:AbortSignal.timeout(12000)});
+      if(!r.ok) return null;
+      const d=await r.json();
+      if(d?.s!=='ok'||!d.optionSymbol?.length) return null;
+      const calls=[],puts=[];
+      for(let i=0;i<d.optionSymbol.length;i++){
+        const row={
+          contractSymbol:d.optionSymbol[i]||'',strike:d.strike?.[i]||0,
+          expiration:d.expiration?.[i]||0,lastPrice:d.last?.[i]||0,
+          bid:d.bid?.[i]||0,ask:d.ask?.[i]||0,
+          volume:d.volume?.[i]||0,openInterest:d.openInterest?.[i]||0,
+          impliedVolatility:d.iv?.[i]||0,delta:d.delta?.[i]||0,
+          gamma:d.gamma?.[i]||0,theta:d.theta?.[i]||0,vega:d.vega?.[i]||0,
+          inTheMoney:d.inTheMoney?.[i]||false,_src:'MarketData',
+        };
+        if(d.side?.[i]==='call') calls.push(row); else puts.push(row);
+      }
+      return{calls,puts};
+    }catch(e){return null;}
+  },
+
+  async _yahooOptions(sym, date, workerUrl){
+    try{
+      let url=`${CFG.YF2}/v7/finance/options/${sym}`;
+      if(date) url+=`?date=${date}`;
+      const proxyUrl=`${workerUrl.replace(/\/+$/,'')}/?url=${encodeURIComponent(url)}`;
+      const r=await fetch(proxyUrl,{signal:AbortSignal.timeout(15000)});
+      if(!r.ok) return null;
+      const text=await r.text();
+      if(!text||text.trim().startsWith('<')) return null;
+      const d=JSON.parse(text);
+      const res=d?.optionChain?.result?.[0]||null;
+      if(!res) return null;
+      if(!res._expirationStrings&&res.expirationDates)
+        res._expirationStrings=res.expirationDates.map(ts=>new Date(ts*1000).toISOString().slice(0,10));
+      if(!res.quote) res.quote=S.quotes[sym]||{};
+      res._src='Yahoo';
+      return res;
+    }catch{return null;}
+  },
+
+  // CORS-proxy fallback for Yahoo Finance options (no Worker required)
+  async _yahooOptionsDirect(sym, date){
+    try{
+      let url=`${CFG.YF2}/v7/finance/options/${sym}`;
+      if(date) url+=`?date=${date}`;
+      const d=await this.fetch(url);
+      const res=d?.optionChain?.result?.[0]||null;
+      if(!res) return null;
+      if(!res._expirationStrings&&res.expirationDates)
+        res._expirationStrings=res.expirationDates.map(ts=>new Date(ts*1000).toISOString().slice(0,10));
+      if(!res.quote) res.quote=S.quotes[sym]||{};
+      res._src='Yahoo(proxy)';
+      return res;
+    }catch{return null;}
+  },
+
+  async optionsChain(sym, date=null){
+    const cacheKey=`opts_${sym}_${date||'all'}`;
+    const cached=CACHE.get(cacheKey);
+    if(cached) return cached.value;
+    const workerUrl=S.settings?.cfWorkerUrl;
+    const mdaToken=S.settings?.mdaKey;
+    if(workerUrl){
+      const res=await this._yahooOptions(sym,date,workerUrl);
+      if(res){CACHE.set(cacheKey,res,CACHE.TTL_OPTIONS);MKT._updateCacheDisplay();return res;}
+    }
+    if(mdaToken){
+      try{
+        if(!S._mdaExpiries) S._mdaExpiries={};
+        let expDates=S._mdaExpiries[sym];
+        if(!expDates){
+          expDates=await this._mdaExpirations(sym,mdaToken);
+          if(expDates) S._mdaExpiries[sym]=expDates;
+        }
+        if(expDates?.length){
+          let expStr=date
+            ?(String(date).match(/^\d{4}-\d{2}-\d{2}$/)?date:new Date(date*1000).toISOString().slice(0,10))
+            :expDates[0];
+          const chain=await this._mdaChain(sym,expStr,mdaToken);
+          if(chain){
+            const res={underlyingSymbol:sym,
+              expirationDates:expDates.map(e=>Math.floor(new Date(e).getTime()/1000)),
+              _expirationStrings:expDates,options:[chain],
+              quote:S.quotes[sym]||{},_src:'MarketData'};
+            CACHE.set(cacheKey,res,CACHE.TTL_OPTIONS);MKT._updateCacheDisplay();return res;
+          }
+        }
+      }catch{}
+    }
+    // FIX: Last-resort fallback — try Yahoo Finance options via CORS proxy directly.
+    // No Worker or MDA token required. Reliability varies by proxy but works for most
+    // TSX and US symbols via corsproxy.io.
+    const direct=await this._yahooOptionsDirect(sym,date);
+    if(direct){CACHE.set(cacheKey,direct,CACHE.TTL_OPTIONS);MKT._updateCacheDisplay();return direct;}
+    return null;
+  },
+
+  async history(sym,range='3mo',interval='1d'){
+    const cacheKey=`hist_${sym}_${range}`;
+    const cached=CACHE.get(cacheKey);
+    if(cached) return cached.value;
+    const fhKey=S.settings?.fhKey;
+    const sizeMap={'1mo':30,'3mo':90,'6mo':180,'1y':252,'2y':504};
+    if(fhKey){
+      const res=await this.historyFH(sym,sizeMap[range]||90,fhKey);
+      if(res){CACHE.set(cacheKey,res,CACHE.TTL_HISTORY);MKT._updateCacheDisplay();return res;}
+      // FIX: Finnhub returned nothing (e.g. candle format mismatch or coverage gap)
+      // Fall through to Yahoo Finance proxy below.
+    }
+    const url=`${CFG.YF1}/v8/finance/chart/${sym}?range=${range}&interval=${interval}&events=earnings`;
+    const d=await this.fetch(url);
+    const result=d?.chart?.result?.[0];
+    if(!result) return null;
+    const q=result.indicators?.quote?.[0]||{};
+    const earningsEvents=result.events?.earnings?Object.values(result.events.earnings):[];
+    const res={timestamps:result.timestamp||[],closes:q.close||[],opens:q.open||[],highs:q.high||[],lows:q.low||[],volumes:q.volume||[],earningsEvents,_src:'Yahoo'};
+    CACHE.set(cacheKey,res,CACHE.TTL_HISTORY);
+    MKT._updateCacheDisplay();
+    return res;
+  },
+
+  async historyFH(sym,days=90,key){
+    try{
+      const to=Math.floor(Date.now()/1000);
+      const from=to - days*86400;
+      // FIX: Finnhub candle endpoint uses exchange:symbol format for TSX — TD.TO → TO:TD
+      const fhSym = TSX.fhCandleSym(sym);
+      const url=`https://finnhub.io/api/v1/stock/candle?symbol=${fhSym}&resolution=D&from=${from}&to=${to}&token=${key}`;
+      const r=await fetch(url,{signal:AbortSignal.timeout(12000)});
+      if(!r.ok) return null;
+      const d=await r.json();
+      if(!d||d.s==='no_data'||!d.c?.length) return null;
+      return{timestamps:d.t,closes:d.c,opens:d.o,highs:d.h,lows:d.l,volumes:d.v||[],earningsEvents:[],_src:'Finnhub'};
+    }catch{return null;}
+  },
+
+  _updateCacheDisplay(){
+    const el=document.getElementById('cache-badge');
+    if(!el) return;
+    const n=CACHE.size();
+    el.textContent=n>0?`💾 ${n} item${n>1?'s':''} cached`:'';
+  },
+};
+
+const DB = {
+  g:(k,d=null)=>{
+    try{ const v=localStorage.getItem('od_'+k); return v?JSON.parse(v):d; }
+    catch(e){ return d; }
+  },
+  s:(k,v)=>{
+    try{ localStorage.setItem('od_'+k,JSON.stringify(v)); }
+    catch(e){ /* storage unavailable */ }
+  },
+  init(){
+    S.watchlist = DB.g('watchlist', [...CFG.DEFAULT_WL]);
+    S.trades    = DB.g('trades', []);
+    S.settings  = DB.g('settings', {});
+  },
+};
+
+const GS = {
+  cfg: ()=> S.settings.sheetsId && S.settings.apiKey,
+  async read(range){
+    if(!this.cfg()) return null;
+    try{
+      const r=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${S.settings.sheetsId}/values/${range}?key=${S.settings.apiKey}`);
+      const d=await r.json(); return d.values||[];
+    }catch{return null;}
+  },
+  async write(range,values){
+    if(!S.settings.oauthToken){toast('OAuth token required for write access','warn');return false;}
+    try{
+      const r=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${S.settings.sheetsId}/values/${range}?valueInputOption=USER_ENTERED`,{
+        method:'PUT',headers:{'Authorization':`Bearer ${S.settings.oauthToken}`,'Content-Type':'application/json'},
+        body:JSON.stringify({values})});
+      return r.ok;
+    }catch{return false;}
+  },
+  toRows: ()=>{
+    const H=['ID','Symbol','Strategy','Strike','Expiry','Contracts','Entry','Exit','EntryDate','ExitDate','Status','PnL','Notes'];
+    return[H,...S.trades.map(t=>[t.id,t.symbol,t.type,t.strike||'',t.expiry||'',t.contracts,t.entry,t.exit||'',t.date,t.exitDate||'',t.status,t.pnl||'',t.notes||''])];
+  },
+  fromRows:rows=>{
+    if(!rows||rows.length<2) return[];
+    return rows.slice(1).map(r=>({id:r[0],symbol:r[1],type:r[2],strike:+r[3]||null,expiry:r[4]||null,contracts:+r[5]||1,entry:+r[6],exit:r[7]?+r[7]:null,date:r[8],exitDate:r[9]||null,status:r[10],pnl:r[11]?+r[11]:null,notes:r[12]||''}));
+  },
+};
+
+function toast(msg,type='info'){
+  const el=document.createElement('div');
+  el.className=`toast toast-${type}`; el.textContent=msg;
+  U.$('toast-container').appendChild(el);
+  setTimeout(()=>el.remove(),3500);
+}
+
+// ─── FIX 2: TSX quick-add grid — rendered by JS so template literals work ────
+// Original code embedded ${[...].map(...)} directly in static HTML, which is
+// never evaluated by the browser — it renders as literal text "${...}".
+// Now rendered once at init via renderTSXQuickAdd().
+function renderTSXQuickAdd() {
+  const el = U.$('tsx-quickadd-grid');
+  if (!el) return;
+  const stocks = [
+    ['TD.TO','Banks'],['RY.TO','Banks'],['BNS.TO','Banks'],['BMO.TO','Banks'],['CM.TO','Banks'],['NA.TO','Banks'],
+    ['ENB.TO','Energy'],['CNQ.TO','Energy'],['SU.TO','Energy'],['CVE.TO','Energy'],['TRP.TO','Energy'],
+    ['CNR.TO','Rail'],['CP.TO','Rail'],
+    ['SHOP.TO','Tech'],['CSU.TO','Tech'],['OTEX.TO','Tech'],
+    ['BCE.TO','Telco'],['T.TO','Telco'],['RCI.B.TO','Telco'],
+    ['ABX.TO','Mining'],['AEM.TO','Mining'],['WPM.TO','Mining'],
+    ['MFC.TO','Insurance'],['SLF.TO','Insurance'],['POW.TO','Insurance'],
+    ['XIU.TO','ETF'],['XIC.TO','ETF'],['ZEB.TO','ETF'],
+  ];
+  el.innerHTML = stocks.map(([sym, sector]) => {
+    const display = sym.replace('.TO','');
+    return `<button onclick="app.addTicker('${sym}')" title="${sym} — ${sector}"
+      style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:3px 8px;
+             font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--text);cursor:pointer;
+             transition:border-color .15s;"
+      onmouseover="this.style.borderColor='var(--border2)'"
+      onmouseout="this.style.borderColor='var(--border)'">
+      ${display}<span style="color:var(--muted);font-size:9px;margin-left:3px;">.TO</span>
+    </button>`;
+  }).join('');
+}
+
+const CHS = {
+  destroy(id){},
+  _draw(imgId, datasets, opts={}){
+    const W = 900, H = opts.height || 160;
+    const canvas = document.createElement('canvas');
+    canvas.width=W; canvas.height=H;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#1e2a3d';
+    ctx.fillRect(0, 0, W, H);
+    const PAD = {top:12, right:16, bottom:32, left:52};
+    const cW = W - PAD.left - PAD.right;
+    const cH = H - PAD.top  - PAD.bottom;
+    let allVals = [];
+    datasets.forEach(ds => ds.data.forEach(v => { if(v!=null && isFinite(v)) allVals.push(v); }));
+    let yMin = opts.yMin != null ? opts.yMin : Math.min(...allVals);
+    let yMax = opts.yMax != null ? opts.yMax : Math.max(...allVals);
+    if(yMin===yMax){ yMin -= 1; yMax += 1; }
+    const yPad = (yMax-yMin)*0.05;
+    if(opts.yMin == null) yMin -= yPad;
+    if(opts.yMax == null) yMax += yPad;
+    const labels = opts.labels || [];
+    const nPts = Math.max(...datasets.map(d=>d.data.length));
+    const xPos = i => PAD.left + (i/(nPts-1||1))*cW;
+    const yPos = v => PAD.top  + (1-(v-yMin)/(yMax-yMin))*cH;
+    ctx.strokeStyle = 'rgba(30,45,66,0.6)'; ctx.lineWidth = 1;
+    ctx.fillStyle = '#4a6080'; ctx.font = '9px JetBrains Mono, monospace'; ctx.textAlign = 'right';
+    for(let i=0;i<=5;i++){
+      const v = yMin + (yMax-yMin)*(i/5);
+      const y = yPos(v);
+      ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W-PAD.right, y); ctx.stroke();
+      ctx.fillText(v.toFixed(v>100?0:v>1?2:3), PAD.left-4, y+3);
+    }
+    ctx.textAlign = 'center'; ctx.fillStyle = '#4a6080';
+    const step = Math.max(1, Math.floor(nPts/7));
+    for(let i=0;i<nPts;i+=step){
+      if(labels[i]) ctx.fillText(labels[i], xPos(i), H-PAD.bottom+14);
+    }
+    datasets.forEach(ds => {
+      if(!ds.data || !ds.data.length) return;
+      const isBar=ds.type==='bar'; const isDash=ds.dash; const color=ds.color||'#3b82f6';
+      if(isBar){
+        const barW=Math.max(1,cW/nPts-1);
+        ds.data.forEach((v,i)=>{
+          if(v==null||!isFinite(v)) return;
+          const x=xPos(i), y0=yPos(0), y1=yPos(v);
+          ctx.fillStyle=v>=0?'rgba(16,185,129,0.55)':'rgba(239,68,68,0.55)';
+          ctx.fillRect(x-barW/2,Math.min(y0,y1),barW,Math.abs(y0-y1));
+        });
+        return;
+      }
+      if(ds.fillTo!=null){
+        const other=datasets[ds.fillTo];
+        if(other){
+          ctx.beginPath(); let started=false;
+          ds.data.forEach((v,i)=>{
+            if(v==null||!isFinite(v)) return;
+            if(!started){ctx.moveTo(xPos(i),yPos(v));started=true;} else ctx.lineTo(xPos(i),yPos(v));
+          });
+          for(let i=other.data.length-1;i>=0;i--){
+            const v=other.data[i]; if(v!=null&&isFinite(v)) ctx.lineTo(xPos(i),yPos(v));
+          }
+          ctx.closePath(); ctx.fillStyle='rgba(59,130,246,0.05)'; ctx.fill();
+        }
+      }
+      ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=ds.width||1.5;
+      if(isDash) ctx.setLineDash(isDash); else ctx.setLineDash([]);
+      let moved=false;
+      ds.data.forEach((v,i)=>{
+        if(v==null||!isFinite(v)){moved=false;return;}
+        if(!moved){ctx.moveTo(xPos(i),yPos(v));moved=true;} else ctx.lineTo(xPos(i),yPos(v));
+      });
+      ctx.stroke(); ctx.setLineDash([]);
+    });
+    ctx.textAlign='left'; ctx.font='9px JetBrains Mono, monospace';
+    let lx=PAD.left;
+    datasets.forEach(ds=>{
+      if(!ds.label||ds.noLegend) return;
+      ctx.fillStyle=ds.type==='bar'?'rgba(16,185,129,0.8)':(ds.color||'#3b82f6');
+      ctx.fillRect(lx,3,8,8); ctx.fillStyle='#4a6080';
+      ctx.fillText(ds.label,lx+11,11); lx+=ctx.measureText(ds.label).width+24;
+    });
+    const img=U.$(imgId); if(img) img.src=canvas.toDataURL('image/png');
+  },
+  renderPrice(labels,prices,bb){
+    this._draw('price-chart',[
+      {label:'BB Upper',data:bb.up,color:'rgba(74,96,128,0.45)',width:1,dash:[4,4]},
+      {label:'BB Lower',data:bb.lo,color:'rgba(74,96,128,0.45)',width:1,dash:[4,4],fillTo:0},
+      {label:'SMA20',data:bb.mid,color:'rgba(100,120,150,0.6)',width:1,dash:[6,4]},
+      {label:'Price',data:prices,color:'#3b82f6',width:2},
+    ],{labels,height:180});
+  },
+  renderRSI(labels,rsi){
+    const n=rsi.length;
+    this._draw('rsi-chart',[
+      {label:'70',data:Array(n).fill(70),color:'rgba(239,68,68,0.35)',width:1,dash:[4,4],noLegend:true},
+      {label:'30',data:Array(n).fill(30),color:'rgba(16,185,129,0.35)',width:1,dash:[4,4],noLegend:true},
+      {label:'RSI',data:rsi,color:'#8b5cf6',width:2},
+    ],{labels,yMin:0,yMax:100,height:120});
+  },
+  renderMACD(labels,ml,sl,hist){
+    this._draw('macd-chart',[
+      {label:'Histogram',data:hist,type:'bar'},
+      {label:'MACD',data:ml,color:'#3b82f6',width:1.5},
+      {label:'Signal',data:sl,color:'#f97316',width:1.5,dash:[3,3]},
+    ],{labels});
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+//  MORNING BRIEF ENGINE
+// ════════════════════════════════════════════════════════════
+const MORNING = {
+  _running: false,
+  _results: [],
+
+  log(sym, status, msg) {
+    const el = U.$('mb-progress-log');
+    if (!el) return;
+    const icon = status === 'done' ? '✓' : status === 'fail' ? '✗' : '…';
+    const cls  = status === 'done' ? 'done' : status === 'fail' ? 'fail' : 'wait';
+    // FIX: sanitise log row ID the same way we sanitise card IDs
+    const id   = `mblog-${sym.replace(/[^a-z0-9]/gi,'-')}`;
+    let row = document.getElementById(id);
+    if (!row) {
+      row = document.createElement('div');
+      row.className = 'mb-progress-row';
+      row.id = id;
+      el.appendChild(row);
+    }
+    row.innerHTML = `<span class="${cls}" style="font-family:var(--font-mono);min-width:12px;">${icon}</span>
+      <span style="font-family:var(--font-mono);color:var(--accent2);min-width:55px;">${sym}</span>
+      <span>${msg}</span>`;
+  },
+
+  _analyze(sym, hist) {
+    if (!hist || !hist.closes || hist.closes.length < 30) return null;
+    const closes = hist.closes.filter(v => v != null);
+    if (closes.length < 26) return null;
+    const rsi  = IND.rsi(closes);
+    const macd = IND.macd(closes);
+    const bb   = IND.bb(closes);
+    const sma50= IND.sma(closes, Math.min(50, closes.length));
+    const last = arr => arr.filter(v => v != null).pop();
+    const lRsi   = last(rsi) || 50;
+    const lPrice = closes[closes.length - 1];
+    const lMacd  = last(macd.macdLine) || 0;
+    const lSig   = last(macd.signalLine) || 0;
+    const lUp    = last(bb.up)  || lPrice;
+    const lLo    = last(bb.lo)  || lPrice;
+    const lMid   = last(bb.mid) || lPrice;
+    const lSma50 = last(sma50)  || lPrice;
+    const bbPct  = lUp !== lLo ? Math.round((lPrice - lLo) / (lUp - lLo) * 100) : 50;
+    const macdBull = lMacd > lSig;
+    const abv50  = lPrice > lSma50;
+    const abv20  = lPrice > lMid;
+    const rsiBullThr  = S.settings?.mbRsiLow  ? +S.settings.mbRsiLow  : 35;
+    const rsiBearThr  = S.settings?.mbRsiHigh ? +S.settings.mbRsiHigh : 65;
+    let score = 0;
+    let signals = [];
+    if (lRsi < rsiBullThr) { score++; signals.push({label:'RSI oversold', type:'bull'}); }
+    else if (lRsi > rsiBearThr) { score--; signals.push({label:'RSI overbought', type:'bear'}); }
+    if (macdBull) { score++; signals.push({label:'MACD bullish cross', type:'bull'}); }
+    else { score--; signals.push({label:'MACD bearish cross', type:'bear'}); }
+    if (bbPct < 20) { score++; signals.push({label:'Near BB lower', type:'bull'}); }
+    else if (bbPct > 80) { score--; signals.push({label:'Near BB upper', type:'bear'}); }
+    if (abv50 && abv20) { score++; signals.push({label:'Above SMA20/50', type:'bull'}); }
+    else if (!abv50 && !abv20) { score--; signals.push({label:'Below SMA20/50', type:'bear'}); }
+    return {
+      sym, lPrice, lRsi, macdBull, bbPct,
+      abv50, abv20, lSma50, lMid, score, signals,
+      rating: score >= 2 ? 'bull' : score <= -2 ? 'bear' : 'neut',
+    };
+  },
+
+  async run() {
+    if (this._running) { toast('Brief already running…', 'warn'); return; }
+    if (!S.settings?.fhKey) {
+      toast('Configure Finnhub API key in ⚙ Settings first', 'warn');
+      return;
+    }
+    this._running = true;
+    this._results = [];
+    U.$('mb-empty').style.display = 'none';
+    U.$('mb-progress').style.display = 'block';
+    U.$('mb-progress-log').innerHTML = '';
+    U.$('mb-scorecard-section').style.display = 'none';
+    U.$('mb-opps-section').style.display = 'none';
+    U.$('mb-market-context').style.display = 'none';
+    U.$('mb-earnings-section').style.display = 'none';
+    U.$('mb-checklist-section').style.display = 'none';
+    const btn = U.$('mb-run-btn');
+    btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;"></div> Scanning…';
+
+    const ctxSyms = ['SPY', 'QQQ', 'IWM', 'VIXY', 'XIU.TO'];
+    const ctxLabels = {
+      'SPY':    'S&P 500 (SPY)',
+      'QQQ':    'Nasdaq (QQQ)',
+      'IWM':    'Russell 2K (IWM)',
+      'VIXY':   'VIX Proxy (VIXY)',
+      'XIU.TO': 'S&P/TSX 60 (XIU)',
+    };
+    const ctxQuotes = {};
+    for (const s of ctxSyms) {
+      this.log(s, 'wait', 'Fetching market context…');
+      let q = await MKT._fhQuote(s, S.settings.fhKey);
+      if (!q) q = await MKT._yfQuote(s);
+      if (q) ctxQuotes[s] = q;
+      this.log(s, q ? 'done' : 'fail', q ? `${U.fp(q.regularMarketPrice)} (${q.regularMarketChangePercent >= 0 ? '+' : ''}${q.regularMarketChangePercent.toFixed(2)}%)` : 'No data');
+      await new Promise(r => setTimeout(r, 350));
+    }
+    this._renderMarketContext(ctxQuotes, ctxLabels);
+
+    const syms = S.watchlist.slice(0, 12);
+    for (const sym of syms) {
+      this.log(sym, 'wait', 'Fetching history…');
+      const hist = await MKT.history(sym, '3mo', '1d');
+      if (!hist) { this.log(sym, 'fail', 'No historical data'); await new Promise(r => setTimeout(r, 350)); continue; }
+      const analysis = this._analyze(sym, hist);
+      if (!analysis) { this.log(sym, 'fail', 'Insufficient data'); await new Promise(r => setTimeout(r, 350)); continue; }
+      let q = await MKT._fhQuote(sym, S.settings.fhKey);
+      if (!q) q = await MKT._yfQuote(sym);
+      if (q) { S.quotes[sym] = q; analysis.lPrice = q.regularMarketPrice || analysis.lPrice; analysis.chgPct = q.regularMarketChangePercent || 0; }
+      analysis.chgPct = analysis.chgPct || 0;
+      this._results.push(analysis);
+      const emoji = analysis.rating === 'bull' ? '🟢' : analysis.rating === 'bear' ? '🔴' : '🟡';
+      this.log(sym, 'done', `${emoji} Score ${analysis.score > 0 ? '+' : ''}${analysis.score} | RSI ${analysis.lRsi.toFixed(0)} | ${analysis.macdBull ? 'MACD Bull' : 'MACD Bear'}`);
+      await new Promise(r => setTimeout(r, 350));
+    }
+
+    this._renderScorecard();
+    this._renderOpportunities();
+    this._renderEarnings();
+    this._renderChecklist();
+
+    btn.disabled = false;
+    btn.innerHTML = '<span style="font-size:16px;">↻</span> Re-run Brief';
+    this._running = false;
+    U.$('mb-progress').style.display = 'none';
+    toast(`Morning brief complete — ${this._results.length} tickers scanned`, 'success');
+  },
+
+  _renderMarketContext(quotes, labelMap) {
+    const grid = U.$('mb-context-grid');
+    const ctx  = U.$('mb-market-context');
+    if (!grid || !Object.keys(quotes).length) return;
+    grid.innerHTML = Object.entries(quotes).map(([sym, q]) => {
+      const chg = q.regularMarketChangePercent || 0;
+      const cls = chg >= 0 ? 'up' : 'down';
+      const bdr = Math.abs(chg) > 2 ? (chg > 0 ? 'rgba(52,211,153,0.3)' : 'rgba(248,113,113,0.3)') : 'var(--border)';
+      const isTSX = TSX.isCanadian(sym);
+      const label = labelMap?.[sym] || sym;
+      return `<div class="stat-box" style="border-color:${bdr};">
+        <div class="stat-label" style="display:flex;align-items:center;gap:4px;">
+          ${label}
+          ${isTSX ? `<span class="badge badge-blue" style="font-size:8px;padding:1px 4px;">CAD</span>` : ''}
+        </div>
+        <div class="stat-value mono" style="font-size:18px;">${U.fp(q.regularMarketPrice)}</div>
+        <div class="mono ${cls}" style="font-size:11px;margin-top:4px;">${chg >= 0 ? '▲' : '▼'} ${Math.abs(chg).toFixed(2)}%</div>
+      </div>`;
+    }).join('');
+    ctx.style.display = 'block';
+  },
+
+  _renderScorecard() {
+    const el = U.$('mb-scorecard');
+    const section = U.$('mb-scorecard-section');
+    if (!el || !this._results.length) return;
+    const sorted = [...this._results].sort((a, b) => Math.abs(b.score) - Math.abs(a.score));
+    el.innerHTML = sorted.map(r => {
+      const chgCls = r.chgPct >= 0 ? 'up' : 'down';
+      const rowCls = r.rating === 'bull' ? 'bull-row' : r.rating === 'bear' ? 'bear-row' : 'neut-row';
+      const scoreColor = r.score >= 2 ? 'var(--green)' : r.score <= -2 ? 'var(--red)' : 'var(--yellow)';
+      const scorePct = Math.min(100, Math.max(0, ((r.score + 4) / 8) * 100));
+      const badge = r.rating === 'bull'
+        ? '<span class="badge badge-green">Bullish</span>'
+        : r.rating === 'bear'
+        ? '<span class="badge badge-red">Bearish</span>'
+        : '<span class="badge badge-gray">Neutral</span>';
+      const rsiCls = r.lRsi < 35 ? 'up' : r.lRsi > 65 ? 'down' : 'neutral';
+      const macdTxt = r.macdBull ? '<span class="up">Bull</span>' : '<span class="down">Bear</span>';
+      const bbTxt = r.bbPct < 20 ? `<span class="up">${r.bbPct}%</span>` : r.bbPct > 80 ? `<span class="down">${r.bbPct}%</span>` : `<span class="neutral">${r.bbPct}%</span>`;
+      const trendTxt = (r.abv50 && r.abv20) ? '<span class="up">↑</span>' : (!r.abv50 && !r.abv20) ? '<span class="down">↓</span>' : '<span class="neutral">~</span>';
+      const isTSX = TSX.isCanadian(r.sym);
+      const exLabel = TSX.exchangeLabel(r.sym);
+      return `<div class="mb-ticker-row ${rowCls}" onclick="app.quickOptions('${r.sym}')" title="Click to open ${r.sym} options chain">
+        <div>
+          <div style="font-family:var(--font-mono);font-weight:700;font-size:13px;">${TSX.displaySym(r.sym)}</div>
+          <span class="badge ${isTSX ? 'badge-blue' : 'badge-gray'}" style="font-size:8px;padding:1px 4px;margin-top:2px;">${exLabel}</span>
+        </div>
+        <div class="mono">${U.fp(r.lPrice)}</div>
+        <div class="mono ${chgCls}">${r.chgPct >= 0 ? '+' : ''}${r.chgPct.toFixed(2)}%</div>
+        <div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-family:var(--font-mono);font-weight:700;color:${scoreColor};min-width:24px;">${r.score > 0 ? '+' : ''}${r.score}</span>
+            <div style="flex:1;max-width:160px;">
+              <div class="mb-score-bar"><div class="mb-score-fill" style="width:${scorePct}%;background:${scoreColor};"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="mono ${rsiCls}">${r.lRsi.toFixed(1)}</div>
+        <div class="mono">${macdTxt}</div>
+        <div class="mono mb-hide-sm">${bbTxt}</div>
+        <div class="mono mb-hide-sm">${trendTxt}</div>
+        <div>${badge}</div>
+      </div>`;
+    }).join('');
+    section.style.display = 'block';
+  },
+
+  _renderOpportunities() {
+    const grid    = U.$('mb-opps-grid');
+    const section = U.$('mb-opps-section');
+    if (!grid) return;
+    const minScore = S.settings?.mbMinScore ? +S.settings.mbMinScore : 2;
+    const opps = this._results.filter(r => Math.abs(r.score) >= minScore);
+    if (!opps.length) { section.style.display = 'none'; return; }
+    grid.innerHTML = opps.map(r => {
+      const isBull = r.score > 0;
+      const isTSX = TSX.isCanadian(r.sym);
+      const exLabel = TSX.exchangeLabel(r.sym);
+      const stratLabel  = isBull ? 'Long Call Setup' : 'Long Put Setup';
+      const stratDetail = isTSX
+        ? (isBull ? 'MX ATM/OTM calls, 30–60 DTE — confirm open interest before entry'
+                  : 'MX ATM/OTM puts, 30–60 DTE — confirm open interest before entry')
+        : (isBull ? 'Look for ATM or slightly OTM calls, 30–60 DTE'
+                  : 'Look for ATM or slightly OTM puts, 30–60 DTE');
+      const sigList = r.signals.map(s =>
+        `<div style="font-size:10px;display:flex;align-items:center;gap:4px;padding:2px 0;">
+          <span style="${s.type === 'bull' ? 'color:var(--green)' : s.type === 'bear' ? 'color:var(--red)' : 'color:var(--muted)'};">
+            ${s.type === 'bull' ? '▲' : s.type === 'bear' ? '▼' : '●'}
+          </span>
+          <span style="color:var(--muted);">${s.label}</span>
+        </div>`
+      ).join('');
+      return `<div class="mb-opp-card ${isBull ? 'call-opp' : 'put-opp'}" onclick="app.quickOptions('${r.sym}')">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+          <div>
+            <div style="display:flex;align-items:center;gap:5px;">
+              <div style="font-family:var(--font-mono);font-size:14px;font-weight:700;">${TSX.displaySym(r.sym)}</div>
+              <span class="badge ${isTSX ? 'badge-blue' : 'badge-gray'}" style="font-size:8px;padding:1px 4px;">${exLabel}</span>
+            </div>
+            <div style="font-size:10px;color:var(--muted);margin-top:1px;">${U.fp(r.lPrice)} ${TSX.currencyNote(r.sym)}</div>
+          </div>
+          <span class="badge ${isBull ? 'badge-green' : 'badge-red'}">${isBull ? '📈 CALL' : '📉 PUT'}</span>
+        </div>
+        <div style="font-size:11px;font-weight:600;color:${isBull ? 'var(--green)' : 'var(--red)'};margin-bottom:6px;">${stratLabel}</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;">${stratDetail}</div>
+        ${isTSX ? `<div style="font-size:10px;color:var(--yellow);margin-bottom:6px;">⚠ TSX options — verify liquidity at Montréal Exchange</div>` : ''}
+        <div style="border-top:1px solid var(--border);padding-top:6px;">${sigList}</div>
+        <div style="margin-top:8px;font-size:10px;color:var(--accent2);">→ Open Options Chain</div>
+      </div>`;
+    }).join('');
+    section.style.display = 'block';
+  },
+
+  _renderEarnings() {
+    const el = U.$('mb-earnings-list');
+    const section = U.$('mb-earnings-section');
+    if (!el) return;
+    const inWl = S.watchlist.map(s => ({ sym: s, link: `https://finance.yahoo.com/quote/${s}` }));
+    el.innerHTML = `<div class="card card-sm">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.7;">
+        Live earnings calendar is not available via free APIs. Use these resources to check for earnings in your watchlist this week:
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
+        <a href="https://earningswhispers.com" target="_blank" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:3px 9px;color:var(--accent2);font-size:10px;text-decoration:none;">EarningsWhispers ↗</a>
+        <a href="https://finance.yahoo.com/calendar/earnings" target="_blank" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:3px 9px;color:var(--accent2);font-size:10px;text-decoration:none;">Yahoo Earnings ↗</a>
+        <a href="https://www.barchart.com/options/unusual-activity/stocks" target="_blank" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:3px 9px;color:var(--accent2);font-size:10px;text-decoration:none;">Barchart Unusual OI ↗</a>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        ${inWl.map(({sym, link}) => `<a href="${link}" target="_blank" style="font-family:var(--font-mono);font-weight:700;font-size:11px;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:3px 8px;color:var(--text);text-decoration:none;">${sym}</a>`).join('')}
+      </div>
+    </div>`;
+    section.style.display = 'block';
+  },
+
+  _renderChecklist() {
+    const grid = U.$('mb-checklist-grid');
+    const section = U.$('mb-checklist-section');
+    if (!grid) return;
+    const acct = S.settings?.account ? `$${(+S.settings.account).toLocaleString()}` : 'not set';
+    const maxPos = S.settings?.maxPos ? `$${(+S.settings.maxPos).toLocaleString()}` : 'not set';
+    const maxLoss = S.settings?.maxLoss ? `$${(+S.settings.maxLoss).toLocaleString()}` : 'not set';
+    const openCount = S.trades.filter(t => t.status === 'open').length;
+    const items = [
+      { icon:'📰', label:'Check pre-market news', sub:'Scan for macro events, Fed speak, sector news', ok: true },
+      { icon:'📅', label:'Earnings risk check', sub:'Avoid holding options over earnings unless intentional', ok: true },
+      { icon:'💰', label:'Account size', sub:`Configured: ${acct}`, ok: !!S.settings?.account },
+      { icon:'📏', label:'Max position size', sub:`Configured: ${maxPos}`, ok: !!S.settings?.maxPos },
+      { icon:'🛑', label:'Max daily loss', sub:`Configured: ${maxLoss}`, ok: !!S.settings?.maxLoss },
+      { icon:'📊', label:'Open positions', sub:`${openCount} currently open — review for DTE risk`, ok: openCount < 10 },
+      { icon:'📈', label:'IV environment', sub:'Check VIX level — high IV = sell premium, low IV = buy premium', ok: true },
+      { icon:'⏰', label:'Market open at 9:30 AM ET', sub:'Brief designed for 6:30–9:30 AM ET window', ok: true },
+    ];
+    grid.innerHTML = items.map(item => `
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:6px;">
+        <span style="font-size:16px;min-width:20px;">${item.icon}</span>
+        <div style="flex:1;">
+          <div style="font-size:11px;font-weight:600;display:flex;align-items:center;gap:6px;">
+            ${item.label}
+            <span class="${item.ok ? 'badge badge-green' : 'badge badge-yellow'}">${item.ok ? '✓' : '!'}</span>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px;">${item.sub}</div>
+        </div>
+      </div>`).join('');
+    section.style.display = 'block';
+  },
+
+  clear() {
+    this._results = [];
+    this._running = false;
+    U.$('mb-empty').style.display = 'block';
+    U.$('mb-progress').style.display = 'none';
+    U.$('mb-scorecard-section').style.display = 'none';
+    U.$('mb-opps-section').style.display = 'none';
+    U.$('mb-market-context').style.display = 'none';
+    U.$('mb-earnings-section').style.display = 'none';
+    U.$('mb-checklist-section').style.display = 'none';
+    const btn = U.$('mb-run-btn');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<span style="font-size:16px;">▶</span> Run Morning Brief'; }
+  },
+
+  startCountdown() {
+    const el = U.$('mb-countdown');
+    if (!el) return;
+    const tick = () => {
+      const now = new Date();
+      const edt = now >= new Date(now.getFullYear(),2,8+(7-new Date(now.getFullYear(),2,8).getDay())%7,2) && now < new Date(now.getFullYear(),10,1+(7-new Date(now.getFullYear(),10,1).getDay())%7,2);
+      const etOff = edt ? -4 : -5;
+      const etH = (now.getUTCHours() + etOff + 24) % 24;
+      const etM = now.getUTCMinutes();
+      const etS = now.getUTCSeconds();
+      const minTotal = etH * 60 + etM;
+      if (minTotal >= 240 && minTotal < 570) {
+        const secLeft = (570 - minTotal) * 60 - etS;
+        const h = Math.floor(secLeft / 3600);
+        const m = Math.floor((secLeft % 3600) / 60);
+        const s = secLeft % 60;
+        el.style.display = 'inline-block';
+        el.textContent = `${h > 0 ? h + 'h ' : ''}${m}m ${s}s to open`;
+      } else if (minTotal >= 570 && minTotal < 960) {
+        el.style.display = 'inline-block';
+        el.textContent = '● Market Open';
+        el.style.color = 'var(--green)';
+        el.style.background = 'rgba(52,211,153,0.08)';
+        el.style.borderColor = 'rgba(52,211,153,0.2)';
+      } else {
+        el.style.display = 'none';
+      }
+    };
+    tick(); setInterval(tick, 1000);
+  },
+
+  initDateBadge() {
+    const el = U.$('mb-date-badge');
+    if (el) el.textContent = new Date().toLocaleDateString('en-CA', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+//  RENDER HELPERS
+// ════════════════════════════════════════════════════════════
+function renderWLCard(sym, q) {
+  const price = q?.regularMarketPrice, chg = q?.regularMarketChange, pct = q?.regularMarketChangePercent;
+  const hi = q?.fiftyTwoWeekHigh, lo = q?.fiftyTwoWeekLow, vol = q?.regularMarketVolume;
+  const isUp = (chg || 0) >= 0;
+  const pctFrom = (price && hi && lo) ? Math.round((price - lo) / (hi - lo) * 100) : null;
+  const name = (q?.shortName || TSX.displaySym(sym)).slice(0, 18);
+  const isTSX = TSX.isCanadian(sym);
+  const exLabel = TSX.exchangeLabel(sym);
+  const ccy = TSX.currencyNote(sym);
+  // FIX: use symId() for the element id so dots in TSX symbols don't break getElementById
+  return `<div class="wl-card ${price ? (isUp ? 'up-card' : 'down-card') : ''}" id="${symId(sym)}" onclick="app.quickOptions('${sym}')">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+      <div>
+        <div style="display:flex;align-items:center;gap:5px;">
+          <div style="font-family:var(--font-mono);font-size:13px;font-weight:700;">${TSX.displaySym(sym)}</div>
+          <span class="badge ${isTSX ? 'badge-blue' : 'badge-gray'}" style="font-size:9px;padding:1px 5px;">${exLabel}</span>
+          <span class="badge badge-gray" style="font-size:9px;padding:1px 5px;">${ccy}</span>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:1px;">${name}</div>
+      </div>
+      <button onclick="event.stopPropagation();app.removeTicker('${sym}')" style="color:var(--muted);background:none;border:none;cursor:pointer;font-size:12px;padding:2px 4px;">✕</button>
+    </div>
+    ${price ? `
+      <div style="font-family:var(--font-mono);font-size:18px;font-weight:600;margin-bottom:2px;">${U.fp(price)}</div>
+      <div style="font-family:var(--font-mono);font-size:11px;" class="${U.clr(chg)}">${isUp ? '▲' : '▼'} ${Math.abs(chg || 0).toFixed(2)} (${Math.abs(pct || 0).toFixed(2)}%)</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px;">Vol: ${U.fn(vol)}</div>
+      ${pctFrom != null ? `
+      <div style="margin-top:6px;">
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-bottom:2px;"><span>${U.fp(lo)}</span><span>${U.fp(hi)}</span></div>
+        <div class="progress-track"><div class="progress-fill" style="width:${pctFrom}%;background:${isUp ? 'var(--green)' : 'var(--red)'};"></div></div>
+        <div style="text-align:center;font-size:9px;color:var(--muted);margin-top:1px;">${pctFrom}% of 52W range</div>
+      </div>` : ''}
+      <div style="font-size:10px;color:var(--accent2);margin-top:8px;">${isTSX ? '→ MX Options Chain' : '→ Options Chain'}</div>
+    ` : `<div style="color:var(--muted);font-size:11px;padding:12px 0;">No data</div>`}
+  </div>`;
+}
+
+function renderOptionsTable(chain, filter, nStrikes, itmOnly, hvOnly, spot) {
+  const calls = [...(chain.calls || [])].sort((a, b) => a.strike - b.strike);
+  const puts  = [...(chain.puts  || [])].sort((a, b) => a.strike - b.strike);
+  const filterStrikes = arr => {
+    if (nStrikes === 'all') return arr;
+    const n = +nStrikes;
+    const atmIdx = arr.reduce((pi, v, i) => Math.abs(v.strike - spot) < Math.abs(arr[pi].strike - spot) ? i : pi, 0);
+    return arr.slice(Math.max(0, atmIdx - n), atmIdx + n + 1);
+  };
+  const applyFilters = arr => {
+    let a = filterStrikes(arr);
+    if (itmOnly) a = a.filter(o => o.inTheMoney);
+    if (hvOnly)  a = a.filter(o => (o.openInterest || 0) >= 1000);
+    return a;
+  };
+  const callsF = applyFilters(calls), putsF = applyFilters(puts);
+  const TH = `<thead><tr>
+    <th>Strike</th><th>Last</th><th>Bid/Ask</th><th>Volume</th><th>OI</th>
+    <th>IV</th><th>Delta</th><th>Gamma</th><th>Theta</th><th>Vega</th>
+    <th>DTE</th><th>Status</th><th>Action</th>
+  </tr></thead>`;
+  const row = (o, type) => {
+    const iv = o.impliedVolatility || 0;
+    const dte = o.expiration ? Math.max(0, Math.ceil((o.expiration * 1000 - Date.now()) / 864e5)) : 30;
+    const T = Math.max(dte / 365, 0.001);
+    const g = BS.greeks(spot, o.strike, T, CFG.RFR, iv, type);
+    const itm = o.inTheMoney;
+    const ivCls = iv > 0.6 ? 'iv-high' : iv > 0.35 ? 'iv-mid' : 'iv-low';
+    return `<tr class="${itm ? (type === 'call' ? 'itm-call' : 'itm-put') : ''}">
+      <td style="font-weight:600;">${o.strike.toFixed(0)}</td>
+      <td>${U.fp(o.lastPrice)}</td>
+      <td style="color:var(--muted);">${U.fp(o.bid)} / ${U.fp(o.ask)}</td>
+      <td>${U.fn(o.volume || 0)}</td>
+      <td>${U.fn(o.openInterest || 0)}</td>
+      <td class="${ivCls}">${iv > 0 ? (iv * 100).toFixed(1) + '%' : '—'}</td>
+      <td class="${type === 'call' ? 'up' : 'down'}">${g.delta.toFixed(3)}</td>
+      <td style="color:var(--muted);">${g.gamma.toFixed(4)}</td>
+      <td style="color:var(--red);">${g.theta.toFixed(3)}</td>
+      <td style="color:var(--purple);">${g.vega.toFixed(3)}</td>
+      <td style="color:${dte <= 7 ? 'var(--red)' : dte <= 14 ? 'var(--yellow)' : 'var(--muted)'};">${dte}d</td>
+      <td>${itm ? `<span class="badge ${type === 'call' ? 'badge-green' : 'badge-red'}">${type === 'call' ? 'C-ITM' : 'P-ITM'}</span>` : `<span class="badge badge-gray">OTM</span>`}</td>
+      <td><button class="btn btn-blue btn-xs" onclick="app.prefillTrade('${type}',${o.strike},'${U.fd(o.expiration)}','${o.contractSymbol || ''}')">+ Trade</button></td>
+    </tr>`;
+  };
+  let html = '';
+  if (filter !== 'puts') {
+    html += `<div style="margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:600;color:var(--green);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">📈 Calls (${callsF.length})</div>
+      <div class="overflow-table card" style="padding:0;">
+        <table class="dtable">${TH}<tbody>${callsF.map(c => row(c, 'call')).join('') || `<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:24px;">No calls data</td></tr>`}</tbody></table>
+      </div></div>`;
+  }
+  if (filter !== 'calls') {
+    html += `<div>
+      <div style="font-size:11px;font-weight:600;color:var(--red);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">📉 Puts (${putsF.length})</div>
+      <div class="overflow-table card" style="padding:0;">
+        <table class="dtable">${TH}<tbody>${putsF.map(p => row(p, 'put')).join('') || `<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:24px;">No puts data</td></tr>`}</tbody></table>
+      </div></div>`;
+  }
+  return html || `<div style="text-align:center;color:var(--muted);padding:48px;">No data matched the current filters.</div>`;
+}
+
+function renderTradeRows() {
+  const open = S.trades.filter(t => t.status === 'open');
+  const closed = S.trades.filter(t => t.status === 'closed').sort((a, b) => new Date(b.exitDate || b.date) - new Date(a.exitDate || a.date));
+  const tbody = U.$('open-tbody');
+  if (tbody) tbody.innerHTML = open.length ? open.map(t => {
+    const dte = t.expiry ? U.dte(t.expiry) : null;
+    const dteCls = dte != null ? (dte <= 7 ? 'style="color:var(--red);"' : dte <= 14 ? 'style="color:var(--yellow);"' : '') : '';
+    return `<tr>
+      <td style="font-weight:700;">${t.symbol}</td>
+      <td style="color:var(--muted);font-family:var(--font);">${t.type}</td>
+      <td>${t.strike ? '$' + t.strike : '—'}</td>
+      <td>${t.expiry || '—'}</td>
+      <td>${t.contracts}</td>
+      <td>${U.fp(t.entry)}</td>
+      <td style="color:var(--muted);">—</td>
+      <td style="color:var(--muted);">Pending</td>
+      <td ${dteCls}>${dte != null ? dte + 'd' : '—'}</td>
+      <td style="font-family:var(--font);color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.notes || ''}</td>
+      <td style="display:flex;gap:4px;padding:6px 10px;">
+        <button class="btn btn-green btn-xs" onclick="app.openCloseModal('${t.id}')">Close</button>
+        <button class="btn btn-red btn-xs" onclick="app.deleteTrade('${t.id}')">Del</button>
+      </td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:24px;">No open positions</td></tr>`;
+  const ctbody = U.$('closed-tbody');
+  if (ctbody) ctbody.innerHTML = closed.length ? closed.map(t => {
+    const pnl = t.pnl || 0, cost = t.entry * 100 * t.contracts;
+    const retPct = cost ? ((pnl / cost) * 100).toFixed(1) + '%' : '—';
+    return `<tr>
+      <td>${t.exitDate || t.date}</td>
+      <td style="font-weight:700;">${t.symbol}</td>
+      <td style="font-family:var(--font);color:var(--muted);">${t.type}</td>
+      <td>${t.strike ? '$' + t.strike : '—'} / ${t.expiry || '—'}</td>
+      <td>${t.contracts}</td>
+      <td>${U.fp(t.entry)}</td>
+      <td>${U.fp(t.exit)}</td>
+      <td class="${U.clr(pnl)}" style="font-weight:600;">${U.fpS(pnl)}</td>
+      <td class="${U.clr(pnl)}">${pnl >= 0 ? '+' : ''}${retPct}</td>
+      <td style="font-family:var(--font);color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.notes || ''}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px;">No trade history</td></tr>`;
+}
+
+function renderTradeStats() {
+  const closed = S.trades.filter(t => t.status === 'closed');
+  const open   = S.trades.filter(t => t.status === 'open');
+  const wins   = closed.filter(t => (t.pnl || 0) > 0), losses = closed.filter(t => (t.pnl || 0) < 0);
+  const totalPnl = closed.reduce((a, t) => a + (t.pnl || 0), 0);
+  const winRate  = closed.length ? (wins.length / closed.length * 100).toFixed(1) : null;
+  const avgWin   = wins.length ? wins.reduce((a, t) => a + (t.pnl || 0), 0) / wins.length : 0;
+  const avgLoss  = losses.length ? losses.reduce((a, t) => a + (t.pnl || 0), 0) / losses.length : 0;
+  const today    = U.today();
+  const todayTrades = S.trades.filter(t => t.date === today).length;
+  const set = (id, html, cls='') => { const el = U.$(id); if (el) { el.innerHTML = html; if (cls) el.className = `stat-value ${cls}`; } };
+  set('s-open', open.length);
+  if (U.$('s-pnl')) { U.$('s-pnl').textContent = U.fpS(totalPnl); U.$('s-pnl').className = `stat-value mono ${U.clr(totalPnl)}`; }
+  set('s-wr', winRate ? winRate + '%' : '—');
+  set('s-today', todayTrades);
+  if (U.$('tl-pnl')) { U.$('tl-pnl').textContent = U.fpS(totalPnl); U.$('tl-pnl').className = `stat-value mono ${U.clr(totalPnl)}`; }
+  set('tl-wr', winRate ? winRate + '%' : '—');
+  if (U.$('tl-wl')) U.$('tl-wl').innerHTML = `<span class="up">${U.fp(avgWin)}</span> / <span class="down">${U.fp(Math.abs(avgLoss))}</span>`;
+  set('tl-open', open.length);
+}
+
+function renderSettingsWL() {
+  const el = U.$('settings-wl');
+  if (!el) return;
+  el.innerHTML = S.watchlist.map(s => {
+    const isTSX = TSX.isCanadian(s);
+    const exLabel = TSX.exchangeLabel(s);
+    return `
+    <div style="display:flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:3px 8px;">
+      <span style="font-family:var(--font-mono);font-size:11px;font-weight:600;">${TSX.displaySym(s)}</span>
+      <span class="badge ${isTSX ? 'badge-blue' : 'badge-gray'}" style="font-size:8px;padding:1px 4px;">${exLabel}</span>
+      <button onclick="app.removeTicker('${s}')" style="color:var(--muted);background:none;border:none;cursor:pointer;font-size:11px;line-height:1;">✕</button>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+//  APP
+// ════════════════════════════════════════════════════════════
+const app = {
+  async init() {
+    DB.init();
+    this.clock();
+    this.loadSettings();
+    MORNING.initDateBadge();
+    MORNING.startCountdown();
+    renderSettingsWL();
+    renderTSXQuickAdd();   // FIX: render TSX quick-add buttons via JS
+    renderTradeStats();
+    renderTradeRows();
+    if (U.$('t-date')) U.$('t-date').value = U.today();
+    if (U.$('m-exit-date')) U.$('m-exit-date').value = U.today();
+
+    const mbAutoOpen = S.settings?.mbAutoOpen;
+    const mbAutoRun  = S.settings?.mbAutoRun;
+    if (mbAutoOpen || mbAutoRun) {
+      const now = new Date();
+      const edt = now >= new Date(now.getFullYear(),2,8+(7-new Date(now.getFullYear(),2,8).getDay())%7,2) && now < new Date(now.getFullYear(),10,1+(7-new Date(now.getFullYear(),10,1).getDay())%7,2);
+      const etOff = edt ? -4 : -5;
+      const etH = (now.getUTCHours() + etOff + 24) % 24;
+      const etM = now.getUTCMinutes();
+      const minTotal = etH * 60 + etM;
+      const isPreMarket = (minTotal >= 360 && minTotal < 570);
+      if (isPreMarket) {
+        this.switchTab('morning');
+        if (mbAutoRun && S.settings?.fhKey) {
+          setTimeout(() => MORNING.run(), 800);
+        }
+      } else {
+        await this.refreshAll();
+        this.loadEarnings();
+      }
+    } else {
+      await this.refreshAll();
+      this.loadEarnings();
+    }
+    // Initialise Retirement Watch calendar
+    RW.init();
+  },
+
+  clock() {
+    const tick = () => {
+      const now = new Date();
+      if (U.$('header-time')) U.$('header-time').textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+      const edt = now >= new Date(now.getFullYear(),2,8+(7-new Date(now.getFullYear(),2,8).getDay())%7,2) && now < new Date(now.getFullYear(),10,1+(7-new Date(now.getFullYear(),10,1).getDay())%7,2);
+      const etOff = edt ? -4 : -5;
+      const etH = (now.getUTCHours() + etOff + 24) % 24, etM = now.getUTCMinutes();
+      const wd = now.getUTCDay(); const min = etH * 60 + etM;
+      const el = U.$('market-pill');
+      if (!el) return;
+      if (!wd || wd === 6) { el.textContent = '● CLOSED'; el.style.cssText = 'font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;background:rgba(74,96,128,0.15);color:var(--muted);border:1px solid var(--border)'; }
+      else if (min >= 240 && min < 570) { el.textContent = '◐ PRE-MKT'; el.style.cssText = 'font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;background:rgba(245,158,11,0.12);color:#fbbf24;border:1px solid rgba(245,158,11,0.2)'; }
+      else if (min >= 570 && min < 960) { el.textContent = '● LIVE'; el.style.cssText = 'font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;background:rgba(16,185,129,0.12);color:#34d399;border:1px solid rgba(16,185,129,0.2)'; }
+      else if (min >= 960 && min < 1200) { el.textContent = '◑ AFTER-HRS'; el.style.cssText = 'font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;background:rgba(59,130,246,0.12);color:#60a5fa;border:1px solid rgba(59,130,246,0.2)'; }
+      else { el.textContent = '● CLOSED'; el.style.cssText = 'font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;background:rgba(74,96,128,0.15);color:var(--muted);border:1px solid var(--border)'; }
+    };
+    tick(); setInterval(tick, 1000);
+  },
+
+  switchTab(tab) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    U.$('tab-' + tab)?.classList.add('active');
+    document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
+  },
+
+  async refreshAll() {
+    const grid = U.$('watchlist-grid');
+    if (!S.watchlist.length) {
+      grid.innerHTML = `<div style="grid-column:1/-1;" class="card"><div style="text-align:center;color:var(--muted);">Add tickers to your watchlist to begin.</div></div>`;
+      return;
+    }
+    const fhKey = S.settings?.fhKey;
+    if (!fhKey) {
+      grid.innerHTML = `<div style="grid-column:1/-1;" class="card"><div style="color:var(--yellow);font-size:13px;font-weight:600;margin-bottom:8px;">⚠️ No API key configured</div><div style="font-size:12px;color:var(--muted);">Go to <strong style="color:var(--text);">⚙ Settings</strong> → Finnhub API Key → paste your key → Save &amp; Test.</div></div>`;
+      return;
+    }
+
+    // FIX: skeleton uses symId() so getElementById later works for Canadian tickers
+    grid.innerHTML = S.watchlist.map(sym => `
+      <div class="wl-card" id="${symId(sym)}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+          <div>
+            <div style="font-family:var(--font-mono);font-size:13px;font-weight:700;">${TSX.displaySym(sym)}</div>
+            ${TSX.isCanadian(sym) ? '<span class="badge badge-blue" style="font-size:8px;padding:1px 4px;">TSX</span>' : ''}
+          </div>
+          <button onclick="event.stopPropagation();app.removeTicker('${sym}')" style="color:var(--muted);background:none;border:none;cursor:pointer;font-size:12px;padding:2px 4px;">✕</button>
+        </div>
+        <div style="color:var(--muted);font-size:11px;padding:8px 0;display:flex;align-items:center;gap:6px;"><div class="spinner" style="width:12px;height:12px;border-width:2px;"></div> Loading…</div>
+      </div>`).join('');
+
+    for (const sym of S.watchlist) {
+      let q = await MKT._fhQuote(sym, fhKey);
+      // FIX: Finnhub returned null for this symbol (common for TSX tickers that need
+      // the bare symbol format). Try Yahoo Finance as fallback.
+      if (!q) q = await MKT._yfQuote(sym);
+      if (q) S.quotes[sym] = q;
+      // FIX: use symId() to find the card element — dots in TD.TO broke the original lookup
+      const cardEl = document.getElementById(symId(sym));
+      if (cardEl) cardEl.outerHTML = renderWLCard(sym, S.quotes[sym]);
+      await new Promise(r => setTimeout(r, 350));
+    }
+    renderTradeStats();
+    MKT._updateCacheDisplay();
+    const moves = Object.entries(S.quotes).filter(([, q]) => Math.abs(q?.regularMarketChangePercent || 0) > 3);
+    const alertEl = U.$('alerts-panel');
+    if (alertEl) alertEl.innerHTML = moves.length
+      ? moves.map(([s, q]) => `<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:11px;"><span style="font-family:var(--font-mono);font-weight:700;">${s}</span> — <span class="${U.clr(q.regularMarketChangePercent)}">${q.regularMarketChangePercent > 0 ? '▲' : '▼'} ${Math.abs(q.regularMarketChangePercent).toFixed(2)}%</span> <span style="color:var(--muted);">notable move today</span></div>`).join('')
+      : `<span style="color:var(--muted);font-size:11px;">No notable moves (&gt;3%) in watchlist today.</span>`;
+  },
+
+  async loadOptionsChain() {
+    const raw = U.$('opt-symbol')?.value?.trim();
+    if (!raw) { toast('Enter a symbol first', 'warn'); return; }
+    const sym = TSX.normalise(raw);
+    if (U.$('opt-symbol')) U.$('opt-symbol').value = sym;
+    S.curOptSym = sym;
+    const container = U.$('opt-chain-container');
+    container.innerHTML = `<div class="loading-block"><div class="spinner"></div><span>Loading ${sym} options chain…</span></div>`;
+    U.$('opt-underlying')?.style && (U.$('opt-underlying').style.display = 'none');
+    const [chain, quoteRes] = await Promise.all([
+      MKT.optionsChain(sym),
+      S.quotes[sym] ? Promise.resolve(null) : MKT._fhQuote(sym, S.settings?.fhKey).then(async q => {
+        if (q) return { [sym]: q };
+        const yq = await MKT._yfQuote(sym);
+        return yq ? { [sym]: yq } : null;
+      }),
+    ]);
+    if (quoteRes) Object.assign(S.quotes, quoteRes);
+    if (!chain) {
+      const isTSX = TSX.isCanadian(sym);
+      const workerCode = `// OptionsDesk Cloudflare Worker — options proxy
+// Deploy at: https://workers.cloudflare.com (free account, no credit card)
+// 1. Go to workers.cloudflare.com → Create Worker → paste this code → Deploy
+// 2. Copy your worker URL (e.g. https://options-proxy.yourname.workers.dev)
+// 3. Paste it into OptionsDesk → Settings → Cloudflare Worker URL
+
+export default {
+  async fetch(request) {
+    const url = new URL(request.url);
+    const target = url.searchParams.get('url');
+    if (!target) return new Response('Missing url param', { status: 400 });
+    // Fetch Yahoo crumb first
+    const crumbResp = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
+      headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': '*/*', 'Referer': 'https://finance.yahoo.com' },
+      credentials: 'include',
+    });
+    const crumb = await crumbResp.text();
+    const finalUrl = crumb && !crumb.includes('<!') ? target + (target.includes('?') ? '&' : '?') + 'crumb=' + encodeURIComponent(crumb.trim()) : target;
+    const resp = await fetch(finalUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Accept': 'application/json, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://finance.yahoo.com',
+        'Origin': 'https://finance.yahoo.com',
+      },
+    });
+    const body = await resp.text();
+    return new Response(body, {
+      status: resp.status,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      },
+    });
+  }
+};`;
+      container.innerHTML = `<div style="max-width:680px;margin:0 auto;padding:8px;">
+        <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:8px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:18px;">⚠</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--red);">Options chain unavailable for ${sym}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px;">Yahoo Finance options require a Cloudflare Worker proxy to bypass browser CORS restrictions. This is a free 2-minute setup.</div>
+          </div>
+        </div>
+        ${isTSX ? `<div style="background:rgba(251,146,60,0.08);border:1px solid rgba(251,146,60,0.2);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--muted);">
+          <strong style="color:var(--orange);">📋 TSX Note:</strong> Options on TSX stocks trade at the <strong style="color:var(--text);">Montréal Exchange (MX)</strong>. Many TSX names have listed options (TD, RY, BNS, BMO, CM, ENB, CNQ, SU) — once the Worker is deployed, they load just like US options.
+        </div>` : ''}
+        <div class="card card-sm" style="margin-bottom:14px;">
+          <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;">🚀 3-step setup (free, ~2 minutes)</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <div style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px;">1</div>
+              <div>
+                <div style="font-size:11px;font-weight:600;color:var(--text);">Create a free Cloudflare account</div>
+                <a href="https://workers.cloudflare.com" target="_blank" style="font-size:10px;color:var(--accent2);">workers.cloudflare.com</a>
+                <span style="font-size:10px;color:var(--muted);"> → Sign up → Dashboard → Workers &amp; Pages → Create</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <div style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px;">2</div>
+              <div style="flex:1;">
+                <div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:6px;">Paste this worker code → Deploy</div>
+                <div style="position:relative;">
+                  <textarea id="worker-code-box" readonly style="width:100%;height:140px;font-family:var(--font-mono);font-size:10px;background:#0a0f1a;border:1px solid var(--border);border-radius:4px;padding:8px;color:var(--muted);resize:none;line-height:1.5;"></textarea>
+                  <button onclick="(()=>{const t=document.getElementById('worker-code-box');t.select();document.execCommand('copy');toast('Worker code copied!','success');})()" style="position:absolute;top:6px;right:6px;background:var(--accent);color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;">Copy</button>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <div style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px;">3</div>
+              <div style="flex:1;">
+                <div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:6px;">Paste your Worker URL into Settings</div>
+                <div style="display:flex;gap:6px;">
+                  <input id="inline-worker-url" type="text" placeholder="https://options-proxy.yourname.workers.dev" style="flex:1;font-size:11px;">
+                  <button onclick="(()=>{const v=document.getElementById('inline-worker-url').value.trim();if(!v){toast('Enter your worker URL first','warn');return;}if(document.getElementById('s-cf-worker'))document.getElementById('s-cf-worker').value=v;app.saveCFWorker().then(()=>app.loadOptionsChain());})()" class="btn btn-blue btn-sm">Save &amp; Load</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;">The Cloudflare free tier allows 100,000 requests/day — more than enough for daily research.</div>
+      </div>`;
+      // Populate the worker code textarea via JS to avoid template-literal nesting issues
+      const wcBox = document.getElementById('worker-code-box');
+      if (wcBox) wcBox.value = workerCode;
+      return;
+    }
+    if (!chain.quote) chain.quote = S.quotes[sym] || {};
+    S.optionsRaw[sym] = chain;
+    const sel = U.$('opt-expiry');
+    if (sel) {
+      const dates = chain.expirationDates || [];
+      const labels = chain._expirationStrings || dates.map(ts => new Date(ts * 1000).toISOString().slice(0, 10));
+      sel.innerHTML = '<option value="">All expirations</option>' +
+        dates.map((ts, i) => `<option value="${ts}">${U.fd(ts)}${labels[i] ? ' (' + U.dte(labels[i]) + 'd)' : ''}</option>`).join('');
+      if (dates.length) { sel.value = dates[0]; S.curOptExp = dates[0]; }
+    }
+    const q = chain.quote || {};
+    const inf = U.$('opt-underlying');
+    const isTSX = TSX.isCanadian(sym);
+    const exLabel = TSX.exchangeLabel(sym);
+    const ccy = TSX.currencyNote(sym);
+    if (inf) {
+      inf.style.display = 'block';
+      U.$('opt-underlying-content').innerHTML = [
+        `<div><span style="color:var(--muted);">Symbol</span> <strong style="margin-left:4px;">${sym}</strong></div>`,
+        `<div><span style="color:var(--muted);">Exchange</span> <span class="badge ${isTSX ? 'badge-blue' : 'badge-gray'}" style="margin-left:4px;">${exLabel}</span></div>`,
+        `<div><span style="color:var(--muted);">Currency</span> <span class="badge badge-gray" style="margin-left:4px;">${ccy}</span></div>`,
+        `<div><span style="color:var(--muted);">Price</span> <strong class="mono" style="margin-left:4px;">${U.fp(q.regularMarketPrice)}</strong></div>`,
+        `<div><span style="color:var(--muted);">Change</span> <span class="${U.clr(q.regularMarketChange)} mono" style="margin-left:4px;">${U.pp(q.regularMarketChangePercent)}</span></div>`,
+        `<div><span style="color:var(--muted);">Volume</span> <span class="mono" style="margin-left:4px;">${U.fn(q.regularMarketVolume)}</span></div>`,
+        `<div><span style="color:var(--muted);">52W</span> <span class="mono" style="margin-left:4px;">${U.fp(q.fiftyTwoWeekLow)} – ${U.fp(q.fiftyTwoWeekHigh)}</span></div>`,
+        isTSX ? `<div style="font-size:10px;color:var(--muted);align-self:center;">MX options only — lower liquidity expected</div>` : '',
+      ].join('');
+    }
+    this.renderOptionsChain();
+  },
+
+  async loadOptionsForExpiry() {
+    const sym = S.curOptSym; if (!sym) return;
+    const sel = U.$('opt-expiry');
+    const tsVal = sel?.value || null;
+    S.curOptExp = tsVal;
+    U.$('opt-chain-container').innerHTML = `<div class="loading-block"><div class="spinner"></div><span>Loading expiry…</span></div>`;
+    const chain = tsVal ? await MKT.optionsChain(sym, tsVal) : S.optionsRaw[sym];
+    if (chain) { if (!chain.quote) chain.quote = S.quotes[sym] || {}; S.optionsRaw[sym] = chain; }
+    this.renderOptionsChain();
+  },
+
+  renderOptionsChain() {
+    const sym = S.curOptSym; if (!sym || !S.optionsRaw[sym]) return;
+    const chain = S.optionsRaw[sym];
+    const spot = (chain.quote?.regularMarketPrice) || (S.quotes[sym]?.regularMarketPrice) || 0;
+    const opts = chain.options?.[0] || { calls: [], puts: [] };
+    const filter   = U.$('opt-filter')?.value  || 'both';
+    const strikes  = U.$('opt-strikes')?.value || '10';
+    const itmOnly  = U.$('opt-itm')?.checked   || false;
+    const hvOnly   = U.$('opt-hv')?.checked    || false;
+    U.$('opt-chain-container').innerHTML = renderOptionsTable(opts, filter, strikes, itmOnly, hvOnly, spot);
+  },
+
+  quickOptions(sym) {
+    this.switchTab('options');
+    if (U.$('opt-symbol')) U.$('opt-symbol').value = sym;
+    this.loadOptionsChain();
+  },
+
+  async loadTechnical() {
+    const raw = U.$('tech-symbol')?.value?.trim();
+    const period = U.$('tech-period')?.value || '3mo';
+    if (!raw) { toast('Enter a symbol', 'warn'); return; }
+    const sym = TSX.normalise(raw);
+    if (U.$('tech-symbol')) U.$('tech-symbol').value = sym;
+    S.curTechSym = sym;
+    if (U.$('tech-loading')) U.$('tech-loading').style.display = 'flex';
+    U.$('tech-signals')?.style && (U.$('tech-signals').style.display = 'none');
+    const hist = await MKT.history(sym, period);
+    if (U.$('tech-loading')) U.$('tech-loading').style.display = 'none';
+    if (!hist || !hist.closes?.length) { toast('No historical data for ' + sym, 'error'); return; }
+    const closes = hist.closes.filter(v => v != null);
+    const labels = hist.timestamps.map(ts => new Date(ts * 1000).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }));
+    const rsi = IND.rsi(closes);
+    const macd = IND.macd(closes);
+    const bb   = IND.bb(closes);
+    CHS.renderPrice(labels, closes, bb);
+    CHS.renderRSI(labels, rsi);
+    CHS.renderMACD(labels, macd.macdLine, macd.signalLine, macd.histogram);
+    const last = arr => arr.filter(v => v != null).pop();
+    const lRsi = last(rsi) || 50, lPrice = closes[closes.length - 1];
+    const lMacd = last(macd.macdLine) || 0, lSig = last(macd.signalLine) || 0;
+    const lUp = last(bb.up) || lPrice, lLo = last(bb.lo) || lPrice, lMid = last(bb.mid) || lPrice;
+    const bbPct = lUp !== lLo ? Math.round((lPrice - lLo) / (lUp - lLo) * 100) : 50;
+    const sma50 = last(IND.sma(closes, 50)) || lPrice;
+    const s = id => U.$(id);
+    if (s('sig-rsi')) { s('sig-rsi').textContent = lRsi.toFixed(1); s('sig-rsi').className = `stat-value mono ${lRsi > 70 ? 'down' : lRsi < 30 ? 'up' : ''}`; s('sig-rsi-lbl').innerHTML = lRsi > 70 ? '<span class="signal-pill pill-bear">Overbought</span>' : lRsi < 30 ? '<span class="signal-pill pill-bull">Oversold</span>' : '<span class="signal-pill pill-neut">Neutral</span>'; }
+    const macdBull = lMacd > lSig;
+    if (s('sig-macd')) { s('sig-macd').innerHTML = `<span class="${macdBull ? 'up' : 'down'}">${macdBull ? '▲ Bull' : '▼ Bear'}</span>`; s('sig-macd-lbl').textContent = `${lMacd.toFixed(2)} vs ${lSig.toFixed(2)}`; }
+    if (s('sig-bb')) { s('sig-bb').textContent = bbPct + '%'; s('sig-bb-lbl').innerHTML = bbPct > 80 ? '<span class="signal-pill pill-bear">Near Upper</span>' : bbPct < 20 ? '<span class="signal-pill pill-bull">Near Lower</span>' : '<span class="signal-pill pill-neut">Mid Band</span>'; }
+    const abv50 = lPrice > sma50, abv20 = lPrice > lMid;
+    if (s('sig-trend')) { s('sig-trend').innerHTML = `<span class="${abv50 ? 'up' : 'down'}">${abv50 && abv20 ? 'Uptrend' : !abv50 && !abv20 ? 'Downtrend' : 'Mixed'}</span>`; s('sig-trend-lbl').textContent = `SMA20: ${lMid.toFixed(1)} | SMA50: ${sma50.toFixed(1)}`; }
+    let score = 0;
+    if (lRsi < 30) score++; if (lRsi > 70) score--;
+    if (macdBull) score++; else score--;
+    if (bbPct < 20) score++; if (bbPct > 80) score--;
+    if (abv50) score++; else score--;
+    const ovEl = s('sig-overall');
+    if (ovEl) { ovEl.innerHTML = score >= 2 ? '<span class="up">🟢 Bullish</span>' : score <= -2 ? '<span class="down">🔴 Bearish</span>' : '<span style="color:var(--yellow)">🟡 Neutral</span>'; s('sig-overall-lbl').textContent = `Score: ${score > 0 ? '+' : ''}${score}/4`; }
+    if (U.$('tech-signals')) U.$('tech-signals').style.display = 'grid';
+  },
+
+  async loadEarnings() {
+    const c = U.$('earnings-container');
+    if (!c) return;
+    c.innerHTML = `<div class="loading-block"><div class="spinner"></div><span>Fetching earnings data…</span></div>`;
+    const results = [];
+    for (const sym of S.watchlist.slice(0, 8)) {
+      try {
+        const h = await MKT.history(sym, '3mo', '1d');
+        if (h?.earningsEvents?.length) h.earningsEvents.forEach(e => results.push({ sym, date: new Date(e.date * 1000), est: e.epsEstimate, act: e.epsActual, surp: e.surprisePercent }));
+      } catch {}
+    }
+    results.sort((a, b) => a.date - b.date);
+    if (!results.length) {
+      c.innerHTML = `<div class="card">
+        <div style="color:var(--yellow);font-size:12px;margin-bottom:10px;">⚠️ Live earnings calendar is limited via free APIs</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
+          ${[['EarningsWhispers','https://earningswhispers.com'],['Yahoo Finance Earnings','https://finance.yahoo.com/calendar/earnings'],['Barchart Unusual Activity','https://www.barchart.com/options/unusual-activity/stocks']].map(([n,u]) => `<a href="${u}" target="_blank" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:4px 10px;color:var(--accent2);font-size:10px;text-decoration:none;">${n} ↗</a>`).join('')}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;">
+          ${S.watchlist.map(s => `<a href="https://finance.yahoo.com/quote/${s}" target="_blank" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px;text-align:center;text-decoration:none;color:var(--text);">
+            <div style="font-family:var(--font-mono);font-weight:700;font-size:13px;">${s}</div>
+            <div style="font-size:9px;color:var(--accent2);margin-top:3px;">Yahoo Finance ↗</div>
+          </a>`).join('')}
+        </div>
+      </div>`;
+      return;
+    }
+    c.innerHTML = `<div class="overflow-table card" style="padding:0;"><table class="dtable"><thead><tr><th>Symbol</th><th>Date</th><th>EPS Est.</th><th>EPS Actual</th><th>Surprise %</th></tr></thead><tbody>
+      ${results.map(e => `<tr>
+        <td style="font-weight:700;">${e.sym}</td>
+        <td style="font-family:var(--font);">${e.date.toLocaleDateString('en-CA')}</td>
+        <td>${e.est?.toFixed(2) || '—'}</td>
+        <td>${e.act?.toFixed(2) || '—'}</td>
+        <td class="${U.clr(e.surp)}">${e.surp != null ? (e.surp > 0 ? '+' : '') + e.surp.toFixed(1) + '%' : '—'}</td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+  },
+
+  addTrade() {
+    const rawSym = U.$('t-symbol')?.value?.trim();
+    const sym = TSX.normalise(rawSym || '');
+    const entry = parseFloat(U.$('t-entry')?.value);
+    if (!sym || !entry) { toast('Symbol and entry price required', 'warn'); return; }
+    const trade = {
+      id: U.uid(), symbol: sym, type: U.$('t-type')?.value || 'Long Call',
+      strike: parseFloat(U.$('t-strike')?.value) || null,
+      expiry: U.$('t-expiry')?.value || null,
+      contracts: parseInt(U.$('t-contracts')?.value) || 1,
+      entry, date: U.$('t-date')?.value || U.today(),
+      exit: null, exitDate: null, status: 'open', pnl: null,
+      notes: U.$('t-notes')?.value || '',
+    };
+    S.trades.push(trade); DB.s('trades', S.trades);
+    ['t-symbol', 't-strike', 't-entry', 't-notes'].forEach(id => { if (U.$(id)) U.$(id).value = ''; });
+    renderTradeRows(); renderTradeStats();
+    toast(`${trade.type} on ${sym} logged`, 'success');
+  },
+
+  openCloseModal(id) {
+    U.$('m-close-id').value = id;
+    U.$('m-exit-price').value = '';
+    U.$('m-exit-date').value = U.today();
+    U.$('m-exit-notes').value = '';
+    U.$('m-pnl-preview').innerHTML = 'Enter exit price to preview P&L';
+    U.$('modal-close-trade').classList.add('open');
+    setTimeout(() => U.$('m-exit-price')?.focus(), 100);
+    U.$('m-exit-price').oninput = () => {
+      const t = S.trades.find(t => t.id === U.$('m-close-id').value);
+      const exit = parseFloat(U.$('m-exit-price').value);
+      if (t && exit) {
+        const isShort = t.type.toLowerCase().startsWith('short');
+        const pnl = (exit - t.entry) * 100 * t.contracts * (isShort ? -1 : 1);
+        U.$('m-pnl-preview').innerHTML = `Estimated P&L: <span class="${U.clr(pnl)}" style="font-size:16px;">${U.fpS(pnl)}</span>`;
+      }
+    };
+  },
+
+  confirmClose() {
+    const id = U.$('m-close-id')?.value;
+    const exit = parseFloat(U.$('m-exit-price')?.value);
+    if (!exit) { toast('Enter exit price', 'warn'); return; }
+    const t = S.trades.find(t => t.id === id); if (!t) return;
+    const isShort = t.type.toLowerCase().startsWith('short');
+    t.exit = exit; t.exitDate = U.$('m-exit-date')?.value || U.today();
+    t.status = 'closed'; t.pnl = (exit - t.entry) * 100 * t.contracts * (isShort ? -1 : 1);
+    const en = U.$('m-exit-notes')?.value;
+    if (en) t.notes = (t.notes ? t.notes + ' | ' : '') + en;
+    DB.s('trades', S.trades);
+    this.closeModal('modal-close-trade');
+    renderTradeRows(); renderTradeStats();
+    toast(`Position closed — ${U.fpS(t.pnl)}`, t.pnl >= 0 ? 'success' : 'warn');
+  },
+
+  deleteTrade(id) {
+    if (!confirm('Delete this trade entry?')) return;
+    S.trades = S.trades.filter(t => t.id !== id); DB.s('trades', S.trades);
+    renderTradeRows(); renderTradeStats();
+  },
+
+  prefillTrade(type, strike, expiry, contract) {
+    this.switchTab('trades');
+    const sym = contract.replace(/\d.*/,'');
+    if (U.$('t-symbol')) U.$('t-symbol').value = sym || S.curOptSym || '';
+    if (U.$('t-type')) U.$('t-type').value = type === 'call' ? 'Long Call' : 'Long Put';
+    if (U.$('t-strike')) U.$('t-strike').value = strike;
+    toast(`Pre-filled: ${type === 'call' ? 'Call' : 'Put'} $${strike} ${expiry}`, 'info');
+  },
+
+  exportCSV() {
+    const rows = [['Date','Symbol','Strategy','Strike','Expiry','Qty','Entry','Exit','P&L','Return%','Notes']];
+    S.trades.forEach(t => {
+      const pnl = t.pnl || '', cost = t.entry * 100 * t.contracts;
+      const ret = t.pnl != null && cost ? (t.pnl / cost * 100).toFixed(1) + '%' : '';
+      rows.push([t.date,t.symbol,t.type,t.strike||'',t.expiry||'',t.contracts,t.entry,t.exit||'',pnl,ret,t.notes||'']);
+    });
+    const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = `optionsdesk_${U.today()}.csv`; a.click();
+  },
+
+  exportJSON() {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify({ watchlist: S.watchlist, trades: S.trades, settings: S.settings, exportedAt: new Date().toISOString() }, null, 2)], { type: 'application/json' }));
+    a.download = `optionsdesk_backup_${U.today()}.json`; a.click();
+  },
+
+  importJSON() {
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json';
+    inp.onchange = e => {
+      const f = e.target.files[0]; if (!f) return;
+      const r = new FileReader();
+      r.onload = e => {
+        try {
+          const d = JSON.parse(e.target.result);
+          if (d.trades) S.trades = d.trades;
+          if (d.watchlist) S.watchlist = d.watchlist;
+          if (d.settings) S.settings = d.settings;
+          DB.s('trades', S.trades); DB.s('watchlist', S.watchlist); DB.s('settings', S.settings);
+          renderTradeRows(); renderTradeStats(); renderSettingsWL();
+          this.refreshAll(); toast('Backup imported', 'success');
+        } catch { toast('Invalid file', 'error'); }
+      }; r.readAsText(f);
+    }; inp.click();
+  },
+
+  addTicker(sym) {
+    sym = TSX.normalise(sym); if (!sym) return;
+    if (S.watchlist.includes(sym)) { toast(sym + ' already in watchlist', 'warn'); return; }
+    S.watchlist.push(sym); DB.s('watchlist', S.watchlist);
+    renderSettingsWL(); this.refreshAll();
+    const label = TSX.isCanadian(sym) ? `${sym} (TSX — CAD)` : sym;
+    toast(label + ' added', 'success');
+  },
+
+  removeTicker(sym) {
+    S.watchlist = S.watchlist.filter(s => s !== sym); DB.s('watchlist', S.watchlist);
+    U.$('watchlist-grid').innerHTML = S.watchlist.map(s => renderWLCard(s, S.quotes[s])).join('');
+    renderSettingsWL();
+  },
+
+  showAddTickerModal() {
+    U.$('m-ticker-input').value = '';
+    U.$('modal-add-ticker').classList.add('open');
+    setTimeout(() => U.$('m-ticker-input')?.focus(), 100);
+  },
+
+  confirmAddTicker() {
+    (U.$('m-ticker-input')?.value || '').split(',').forEach(s => this.addTicker(TSX.normalise(s)));
+    this.closeModal('modal-add-ticker');
+  },
+
+  addTickersFromSettings() {
+    (U.$('s-add-ticker')?.value || '').split(',').forEach(s => this.addTicker(TSX.normalise(s)));
+    if (U.$('s-add-ticker')) U.$('s-add-ticker').value = '';
+  },
+
+  closeModal(id) { U.$(id)?.classList.remove('open'); },
+
+  saveSheetsConfig() {
+    S.settings = { ...S.settings, sheetsId: U.$('s-sheet-id')?.value?.trim(), apiKey: U.$('s-api-key')?.value?.trim(), clientId: U.$('s-client-id')?.value?.trim() };
+    DB.s('settings', S.settings);
+    if (S.settings.sheetsId && S.settings.apiKey) {
+      GS.read('A1').then(d => {
+        const el = U.$('sheets-status');
+        if (el) { el.textContent = d !== null ? '✓ Connected successfully' : '✗ Connection failed'; el.style.color = d !== null ? 'var(--green)' : 'var(--red)'; }
+      });
+    }
+    toast('Settings saved', 'success');
+  },
+
+  saveRisk() {
+    S.settings = { ...S.settings, account: U.$('r-account')?.value, maxPos: U.$('r-position')?.value, maxLoss: U.$('r-daily-loss')?.value, defContracts: U.$('r-contracts')?.value };
+    DB.s('settings', S.settings); toast('Risk settings saved', 'success');
+  },
+
+  saveMBSettings() {
+    S.settings = {
+      ...S.settings,
+      mbAutoOpen:  U.$('mb-auto-open')?.checked  || false,
+      mbAutoRun:   U.$('mb-auto-run')?.checked   || false,
+      mbRsiLow:    U.$('mb-rsi-low')?.value      || '35',
+      mbRsiHigh:   U.$('mb-rsi-high')?.value     || '65',
+      mbMinScore:  U.$('mb-min-score')?.value    || '2',
+    };
+    DB.s('settings', S.settings);
+    toast('Morning Brief settings saved', 'success');
+  },
+
+  async syncToSheets() {
+    if (!GS.cfg()) { toast('Configure Google Sheets first', 'warn'); return; }
+    const ok = await GS.write('Trades!A1', GS.toRows());
+    toast(ok ? 'Synced to Google Sheets' : 'Sync requires OAuth token — use JSON export instead', ok ? 'success' : 'error');
+  },
+
+  async importFromSheets() {
+    if (!GS.cfg()) { toast('Configure Google Sheets first', 'warn'); return; }
+    const rows = await GS.read('Trades!A1:Z9999');
+    if (!rows) { toast('Failed to read Google Sheets', 'error'); return; }
+    S.trades = GS.fromRows(rows); DB.s('trades', S.trades);
+    renderTradeRows(); renderTradeStats();
+    toast(`${S.trades.length} trades imported`, 'success');
+  },
+
+  resetAll() {
+    if (!confirm('⚠️ Delete ALL trades and settings? This cannot be undone.')) return;
+    localStorage.clear(); S.trades = []; S.watchlist = [...CFG.DEFAULT_WL]; S.settings = {};
+    DB.s('trades', S.trades); DB.s('watchlist', S.watchlist); DB.s('settings', S.settings);
+    renderTradeRows(); renderTradeStats(); renderSettingsWL(); this.refreshAll();
+    toast('All data reset', 'info');
+  },
+
+  loadSettings() {
+    const s = S.settings;
+    if (s.fhKey    && U.$('s-fh-key'))    U.$('s-fh-key').value    = s.fhKey;
+    if (s.cfWorkerUrl && U.$('s-cf-worker')) U.$('s-cf-worker').value = s.cfWorkerUrl;
+    if (s.mdaKey   && U.$('s-mda-key'))   U.$('s-mda-key').value   = s.mdaKey;
+    if (s.sheetsId && U.$('s-sheet-id'))  U.$('s-sheet-id').value  = s.sheetsId;
+    if (s.apiKey   && U.$('s-api-key'))   U.$('s-api-key').value   = s.apiKey;
+    if (s.clientId && U.$('s-client-id')) U.$('s-client-id').value = s.clientId;
+    if (s.account  && U.$('r-account'))   U.$('r-account').value   = s.account;
+    if (s.maxPos   && U.$('r-position'))  U.$('r-position').value  = s.maxPos;
+    if (s.maxLoss  && U.$('r-daily-loss')) U.$('r-daily-loss').value = s.maxLoss;
+    if (s.defContracts && U.$('r-contracts')) U.$('r-contracts').value = s.defContracts;
+    if (U.$('mb-auto-open'))  U.$('mb-auto-open').checked  = !!s.mbAutoOpen;
+    if (U.$('mb-auto-run'))   U.$('mb-auto-run').checked   = !!s.mbAutoRun;
+    if (U.$('mb-rsi-low'))    U.$('mb-rsi-low').value      = s.mbRsiLow  || '35';
+    if (U.$('mb-rsi-high'))   U.$('mb-rsi-high').value     = s.mbRsiHigh || '65';
+    if (U.$('mb-min-score'))  U.$('mb-min-score').value    = s.mbMinScore || '2';
+    MKT._updateCacheDisplay();
+  },
+
+  async saveCFWorker() {
+    const workerUrl = (U.$('s-cf-worker')?.value || '').trim().replace(/\/+$/, '');
+    if (!workerUrl) { toast('Enter your Cloudflare Worker URL first', 'warn'); return; }
+    S.settings = { ...S.settings, cfWorkerUrl: workerUrl };
+    DB.s('settings', S.settings); CACHE.clear();
+    const el = U.$('cf-status');
+    if (el) { el.textContent = 'Testing…'; el.style.color = 'var(--muted)'; }
+    try {
+      const testUrl = `${workerUrl}/?url=${encodeURIComponent('https://query1.finance.yahoo.com/v7/finance/quote?symbols=SPY&fields=regularMarketPrice')}`;
+      const r = await fetch(testUrl, { signal: AbortSignal.timeout(15000) });
+      const text = await r.text();
+      const ok = r.ok && text.includes('regularMarketPrice');
+      if (el) {
+        if (ok) { el.textContent = '✓ Worker connected — options chain ready!'; el.style.color = 'var(--green)'; toast('Cloudflare Worker connected!', 'success'); }
+        else { el.textContent = '⚠ Worker reachable but returned unexpected data'; el.style.color = 'var(--yellow)'; }
+      }
+    } catch {
+      if (el) { el.textContent = '⚠ Worker URL saved but could not test it'; el.style.color = 'var(--yellow)'; }
+    }
+  },
+
+  async saveMDAKey() {
+    const key = (U.$('s-mda-key')?.value || '').trim();
+    if (!key) { toast('Enter your Market Data App token first', 'warn'); return; }
+    S.settings = { ...S.settings, mdaKey: key };
+    DB.s('settings', S.settings); CACHE.clear();
+    if (S._mdaExpiries) S._mdaExpiries = {};
+    const el = U.$('mda-status');
+    if (el) { el.textContent = 'Testing…'; el.style.color = 'var(--muted)'; }
+    const exps = await MKT._mdaExpirations('SPY', key);
+    if (el) {
+      if (exps?.length) { el.textContent = `✓ Market Data connected — SPY has ${exps.length} expiry dates.`; el.style.color = 'var(--green)'; toast('Market Data App connected!', 'success'); }
+      else { el.textContent = '✗ Could not connect — check your token'; el.style.color = 'var(--red)'; }
+    }
+  },
+
+  async saveFHKey() {
+    const key = (U.$('s-fh-key')?.value || '').trim();
+    if (!key) { toast('Enter your Finnhub API key first', 'warn'); return; }
+    S.settings = { ...S.settings, fhKey: key };
+    DB.s('settings', S.settings);
+    const el = U.$('fh-status');
+    if (el) { el.textContent = 'Testing connection…'; el.style.color = 'var(--muted)'; }
+    const q = await MKT._fhQuote('SPY', key);
+    if (el) {
+      if (q) {
+        el.textContent = `✓ Finnhub connected — SPY: $${q.regularMarketPrice?.toFixed(2) || '?'} (${q.regularMarketChangePercent >= 0 ? '+' : ''}${q.regularMarketChangePercent?.toFixed(2) || '0'}%)`;
+        el.style.color = 'var(--green)';
+        toast('Finnhub connected! Loading dashboard…', 'success');
+        CACHE.clear(); this.refreshAll();
+      } else {
+        el.textContent = '✗ Could not connect — check your key at finnhub.io/dashboard';
+        el.style.color = 'var(--red)';
+      }
+    }
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+//  RETIREMENT WATCH ENGINE
+//  Tracks Canadian macro events that drive RRIF / covered call strategy
+// ════════════════════════════════════════════════════════════
+const RW = {
+
+  // ── Calendar data ─────────────────────────────────────────
+  // Each entry: { id, category, catColor, source, url, freq, schedule, why, fetchFn? }
+  ENTRIES: [
+    {
+      id:'boc-rate', category:'Interest Rates', catColor:'var(--cyan)',
+      source:'Bank of Canada Rate Announcement', url:'https://www.bankofcanada.ca/core-functions/monetary-policy/key-interest-rate/',
+      freq:'8× per year (~6 wks)', schedule:'2 days before each decision',
+      why:'Drives GIC rates, mortgage costs, equity valuations & your bridge plan',
+      fetchFn: 'bocRate',
+    },
+    {
+      id:'boc-fsr', category:'Interest Rates', catColor:'var(--cyan)',
+      source:'BoC Financial Stability Report', url:'https://www.bankofcanada.ca/publications/fsr/',
+      freq:'2× per year (May & Nov)', schedule:'May 1 & Nov 1 (check release)',
+      why:'Flags structural risks like the hedge fund / bond market shift',
+      fetchFn: null,
+    },
+    {
+      id:'statcan-cpi', category:'Inflation & Consumer Health', catColor:'var(--yellow)',
+      source:'Statistics Canada CPI Release', url:'https://www150.statcan.gc.ca/n1/pub/71-607-x/2018016/cpi-ipc-eng.htm',
+      freq:'Monthly (~3rd week)', schedule:'Monthly (check StatCan calendar)',
+      why:'Rising inflation can delay rate cuts & erode purchasing power of your RRIF draws',
+      fetchFn: 'statcanCPI',
+    },
+    {
+      id:'ccs-survey', category:'Inflation & Consumer Health', catColor:'var(--yellow)',
+      source:'Credit Counselling Society Survey', url:'https://nomoredebts.org',
+      freq:'Annual (Feb/Mar)', schedule:'March 1 each year',
+      why:'Consumer debt trends signal economic stress that affects bank stocks & spending',
+      fetchFn: null,
+    },
+    {
+      id:'cmhc-delinq', category:'Housing & Mortgages', catColor:'var(--red)',
+      source:'CMHC Mortgage Delinquency Data', url:'https://www.cmhc-schl.gc.ca/professionals/housing-markets-data-and-research',
+      freq:'Quarterly', schedule:'Feb / May / Aug / Nov (1st of month)',
+      why:'Missed payments = early warning for bank profit pressure & covered call risk',
+      fetchFn: null,
+    },
+    {
+      id:'statcan-lfs', category:'Employment', catColor:'var(--green)',
+      source:'Statistics Canada Labour Force Survey', url:'https://www150.statcan.gc.ca/n1/pub/71-607-x/71-607-x2018004-eng.htm',
+      freq:'Monthly (1st Friday)', schedule:'Monthly (1st Friday)',
+      why:'Rising employment supports equity markets & confirms your soft-landing thesis',
+      fetchFn: 'statcanLFS',
+    },
+    {
+      id:'statcan-trade', category:'Trade & Exports', catColor:'var(--purple)',
+      source:'Statistics Canada International Trade', url:'https://www150.statcan.gc.ca/n1/pub/71-607-x/71-607-x2018006-eng.htm',
+      freq:'Monthly (~5th week)', schedule:'Monthly (check StatCan calendar)',
+      why:'Export surplus = economic strength; key for CAD/USD exchange rate & portfolio impact',
+      fetchFn: null,
+    },
+    {
+      id:'fin-debt-mgmt', category:'Bond Market & Govt Debt', catColor:'var(--orange)',
+      source:'Dept of Finance Debt Management Report', url:'https://www.canada.ca/en/department-finance.html',
+      freq:'Annual (Aug/Sep)', schedule:'Sept 1 each year',
+      why:'Tracks who holds Canada\'s debt — hedge fund growth = rising refinancing risk for all Canadians',
+      fetchFn: null,
+    },
+    {
+      id:'betterdwelling', category:'Bond Market & Govt Debt', catColor:'var(--orange)',
+      source:'BetterDwelling / Globe & Mail Analysis', url:'https://betterdwelling.com',
+      freq:'As published (ongoing)', schedule:'Weekly scan (e.g. Sunday AM)',
+      why:'Independent analysis that translates BoC/Finance reports into plain language',
+      fetchFn: null,
+    },
+    {
+      id:'bank-earnings', category:'Canadian Bank Earnings', catColor:'var(--accent2)',
+      source:'TD, RY, BNS, BMO, CM Earnings Calls (Investor Relations)', url:'https://finance.yahoo.com/calendar/earnings',
+      freq:'Quarterly (Feb/May/Aug/Nov)', schedule:'1 week before each earnings date',
+      why:'Mortgage provision trends directly signal covered call & collar strategy timing on bank stocks',
+      fetchFn: 'bankEarnings',
+    },
+  ],
+
+  _status: {},   // id → { label, color, detail, ts }
+  _alerts: [],
+
+  // ── Render ────────────────────────────────────────────────
+  render() {
+    const tbody = U.$('rw-tbody');
+    if (!tbody) return;
+    let lastCat = '';
+    tbody.innerHTML = this.ENTRIES.map(e => {
+      const st = this._status[e.id] || {};
+      const isNewCat = e.category !== lastCat;
+      lastCat = e.category;
+      const statusBadge = st.label
+        ? `<span class="badge" style="background:${st.color}22;color:${st.color};border-color:${st.color}44;white-space:nowrap;">${st.label}</span>`
+        : `<span class="badge badge-gray">—</span>`;
+      const catCell = isNewCat
+        ? `<td rowspan="${this.ENTRIES.filter(x=>x.category===e.category).length}" style="vertical-align:top;padding-top:10px;border-right:1px solid var(--border);font-weight:700;font-size:11px;color:${e.catColor};line-height:1.4;">${e.category}</td>`
+        : '';
+      return `<tr>
+        ${catCell}
+        <td style="font-size:11px;">
+          <a href="${e.url}" target="_blank" style="color:var(--accent2);text-decoration:none;font-weight:600;">${e.source}</a>
+          ${st.detail ? `<div style="font-size:10px;color:var(--muted);margin-top:2px;">${st.detail}</div>` : ''}
+        </td>
+        <td style="font-size:10px;color:var(--muted);">${e.freq}</td>
+        <td style="font-size:10px;color:var(--muted);">${e.schedule}</td>
+        <td>${statusBadge}</td>
+        <td style="font-size:10px;color:var(--muted);line-height:1.5;">${e.why}</td>
+      </tr>`;
+    }).join('');
+    this._renderAlerts();
+  },
+
+  _renderAlerts() {
+    const el = U.$('rw-alerts');
+    if (!el) return;
+    if (!this._alerts.length) { el.style.display = 'none'; return; }
+    el.style.display = 'block';
+    el.innerHTML = this._alerts.map(a =>
+      `<div style="background:var(--card);border:1px solid ${a.color}44;border-left:3px solid ${a.color};border-radius:6px;padding:10px 14px;margin-bottom:6px;font-size:11px;">
+        <span style="color:${a.color};font-weight:700;">${a.title}</span>
+        <span style="color:var(--muted);margin-left:10px;">${a.body}</span>
+        <a href="${a.url}" target="_blank" style="color:var(--accent2);margin-left:10px;">Details ↗</a>
+      </div>`
+    ).join('');
+  },
+
+  // ── Live data fetchers ────────────────────────────────────
+  async bocRate() {
+    // Fetch next BoC decision date from BoC website
+    try {
+      const html = await MKT.fetch('https://www.bankofcanada.ca/core-functions/monetary-policy/key-interest-rate/');
+      // Extract overnight rate from page text
+      if (!html) return;
+      const text = JSON.stringify(html);
+      const rateMatch = text.match(/(\d+\.\d+)\s*%/);
+      const rate = rateMatch ? rateMatch[1] : null;
+      this._status['boc-rate'] = {
+        label: rate ? `Rate: ${rate}%` : 'Check site',
+        color: 'var(--cyan)',
+        detail: rate ? `Overnight rate: ${rate}%` : 'Visit bankofcanada.ca for current rate',
+        ts: Date.now(),
+      };
+    } catch {}
+  },
+
+  async statcanCPI() {
+    // Fetch latest CPI from Statistics Canada via their web API
+    try {
+      const d = await MKT.fetch('https://www150.statcan.gc.ca/t1/tbl1/en/dtbl!downloadTbl/jsonDownload/1810000401');
+      if (d) {
+        this._status['statcan-cpi'] = { label:'See StatCan', color:'var(--yellow)', detail:'Visit statcan.gc.ca for latest release', ts:Date.now() };
+      }
+    } catch {}
+    // Fallback: mark as needing manual check
+    if (!this._status['statcan-cpi']) {
+      this._status['statcan-cpi'] = { label:'Manual check', color:'var(--yellow)', detail:'statcan.gc.ca — ~3rd week each month', ts:Date.now() };
+    }
+  },
+
+  async statcanLFS() {
+    this._status['statcan-lfs'] = {
+      label:'1st Friday',
+      color:'var(--green)',
+      detail:'Next release: 1st Friday of month — statcan.gc.ca',
+      ts:Date.now(),
+    };
+  },
+
+  async bankEarnings() {
+    // Fetch upcoming earnings for Canadian bank symbols via Finnhub
+    const fhKey = S.settings?.fhKey;
+    if (!fhKey) {
+      this._status['bank-earnings'] = { label:'Need API key', color:'var(--muted)', detail:'Add Finnhub key in Settings', ts:Date.now() };
+      return;
+    }
+    const banks = ['TD','RY','BNS','BMO','CM'];
+    const now = Math.floor(Date.now()/1000);
+    const future = now + 90*86400;
+    let nextEarnings = null;
+    for (const b of banks) {
+      try {
+        const r = await fetch(`https://finnhub.io/api/v1/stock/earnings?symbol=${b}&token=${fhKey}`,{signal:AbortSignal.timeout(6000)});
+        if (!r.ok) continue;
+        const d = await r.json();
+        if (Array.isArray(d) && d.length) {
+          const upcoming = d.filter(e => e.date && new Date(e.date).getTime()/1000 > now)
+                            .sort((a,b) => new Date(a.date)-new Date(b.date));
+          if (upcoming.length) {
+            const dt = new Date(upcoming[0].date);
+            const label = `${b} ${dt.toLocaleDateString('en-CA',{month:'short',day:'numeric'})}`;
+            if (!nextEarnings || new Date(upcoming[0].date) < new Date(nextEarnings.date)) {
+              nextEarnings = { sym: b, date: upcoming[0].date, label };
+            }
+          }
+        }
+        await new Promise(r=>setTimeout(r,220));
+      } catch {}
+    }
+    if (nextEarnings) {
+      const dte = Math.ceil((new Date(nextEarnings.date)-Date.now())/864e5);
+      this._status['bank-earnings'] = {
+        label: `${nextEarnings.label} (${dte}d)`,
+        color: dte <= 7 ? 'var(--red)' : dte <= 14 ? 'var(--yellow)' : 'var(--green)',
+        detail: `Next bank earnings: ${nextEarnings.sym} on ${nextEarnings.date}`,
+        ts: Date.now(),
+      };
+      if (dte <= 7) {
+        this._alerts.push({
+          title:`⚡ ${nextEarnings.sym} earnings in ${dte}d`,
+          body:`Review covered call & collar positions on ${nextEarnings.sym} before ${nextEarnings.date}`,
+          color:'var(--yellow)',
+          url:'https://finance.yahoo.com/calendar/earnings',
+        });
+      }
+    } else {
+      this._status['bank-earnings'] = { label:'No data', color:'var(--muted)', detail:'Could not retrieve upcoming bank earnings', ts:Date.now() };
+    }
+  },
+
+  // ── BoC rate via Finnhub ──────────────────────────────────
+  async bocRateFH() {
+    const fhKey = S.settings?.fhKey;
+    if (!fhKey) return;
+    try {
+      // Get current overnight rate proxy via 3-month T-bill (CA3M)
+      // or fetch BoC economic data
+      const r = await fetch(`https://finnhub.io/api/v1/indicator?symbol=USDCAD&resolution=M&from=${Math.floor(Date.now()/1000)-86400*30}&to=${Math.floor(Date.now()/1000)}&indicator=rsi&timeperiod=14&token=${fhKey}`,{signal:AbortSignal.timeout(5000)});
+      // Fallback: just show "check site"
+    } catch {}
+    if (!this._status['boc-rate']) {
+      this._status['boc-rate'] = { label:'bankofcanada.ca', color:'var(--cyan)', detail:'Check bankofcanada.ca for current rate & next decision date', ts:Date.now() };
+    }
+  },
+
+  async refresh() {
+    const btn = U.$('rw-refresh-btn');
+    if (btn) { btn.disabled=true; btn.textContent='Refreshing…'; }
+    this._alerts = [];
+
+    // Run all fetchers
+    const fetchers = this.ENTRIES.filter(e=>e.fetchFn).map(e=>e.fetchFn);
+    const unique = [...new Set(fetchers)];
+    for (const fn of unique) {
+      if (typeof this[fn] === 'function') {
+        await this[fn]();
+      }
+    }
+    // Fallback for BoC rate if bocRate() didn't populate
+    await this.bocRateFH();
+
+    // Set static upcoming-date statuses for non-live entries
+    this._setStaticStatuses();
+
+    this.render();
+    if (btn) { btn.disabled=false; btn.textContent='↻ Refresh All'; }
+    toast('Retirement Watch refreshed', 'success');
+  },
+
+  _setStaticStatuses() {
+    const now = new Date();
+    const month = now.getMonth(); // 0-indexed
+    const day = now.getDate();
+
+    // BoC FSR — May and Nov
+    if (!this._status['boc-fsr']) {
+      const nextFSR = month < 4 ? 'May 2026' : month < 10 ? 'Nov 2026' : 'May 2027';
+      this._status['boc-fsr'] = { label: nextFSR, color:'var(--cyan)', detail:'Financial Stability Report — biannual', ts:Date.now() };
+    }
+    // Credit Counselling — March
+    if (!this._status['ccs-survey']) {
+      const yr = month < 2 ? now.getFullYear() : now.getFullYear()+1;
+      this._status['ccs-survey'] = { label:`Mar 1, ${yr}`, color:'var(--yellow)', detail:'Annual survey — nomoredebts.org', ts:Date.now() };
+    }
+    // CMHC — Feb/May/Aug/Nov quarterly
+    if (!this._status['cmhc-delinq']) {
+      const quarters = [1,4,7,10]; // Feb=1,May=4,Aug=7,Nov=10
+      const nextQ = quarters.find(m=>m>month) || quarters[0];
+      const nextYear = nextQ <= month ? now.getFullYear()+1 : now.getFullYear();
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      this._status['cmhc-delinq'] = { label:`${months[nextQ]} 1`, color:'var(--red)', detail:'CMHC Mortgage Delinquency — quarterly', ts:Date.now() };
+    }
+    // Int'l Trade — monthly, ~5th week
+    if (!this._status['statcan-trade']) {
+      this._status['statcan-trade'] = { label:'Monthly', color:'var(--purple)', detail:'~5th week of month — statcan.gc.ca', ts:Date.now() };
+    }
+    // Debt Management Report — Sept
+    if (!this._status['fin-debt-mgmt']) {
+      const yr = month < 8 ? now.getFullYear() : now.getFullYear()+1;
+      this._status['fin-debt-mgmt'] = { label:`Sept 1, ${yr}`, color:'var(--orange)', detail:'Annual — canada.ca/en/department-finance', ts:Date.now() };
+    }
+    // BetterDwelling — ongoing weekly
+    if (!this._status['betterdwelling']) {
+      this._status['betterdwelling'] = { label:'Weekly', color:'var(--orange)', detail:'Check betterdwelling.com Sunday AM', ts:Date.now() };
+    }
+  },
+
+  clearAlerts() {
+    this._alerts = [];
+    this._renderAlerts();
+  },
+
+  init() {
+    this._setStaticStatuses();
+    this.render();
+    // Auto-refresh live data if Finnhub key is available
+    if (S.settings?.fhKey) this.refresh();
+  },
+};
+
+document.addEventListener('DOMContentLoaded', () => app.init());
+document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); }));
+</script>
+</body>
+</html>
