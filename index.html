@@ -644,6 +644,39 @@
           <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
           <div>
             <span class="label">Cloudflare Worker URL (Options — Primary)</span>
+            <div style="font-size:10px;color:var(--muted);margin-bottom:6px;line-height:1.6;">
+              Required for options chain data. Free 2-min setup at
+              <a href="https://workers.cloudflare.com" target="_blank" style="color:var(--accent2);">workers.cloudflare.com</a>.
+              <button onclick="U.$('worker-code-settings').style.display=U.$('worker-code-settings').style.display==='none'?'block':'none'" style="background:none;border:none;color:var(--accent2);cursor:pointer;font-size:10px;padding:0;margin-left:4px;">Show worker code ▾</button>
+            </div>
+            <div id="worker-code-settings" style="display:none;margin-bottom:8px;position:relative;">
+              <textarea readonly style="width:100%;height:120px;font-family:var(--font-mono);font-size:10px;background:#0a0f1a;border:1px solid var(--border);border-radius:4px;padding:8px;color:var(--muted);resize:none;">export default {
+  async fetch(request) {
+    const url = new URL(request.url);
+    const target = url.searchParams.get('url');
+    if (!target) return new Response('Missing url param', { status: 400 });
+    const crumbResp = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
+      headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': '*/*', 'Referer': 'https://finance.yahoo.com' },
+    });
+    const crumb = await crumbResp.text();
+    const finalUrl = crumb && !crumb.includes('<!') ? target + (target.includes('?') ? '&' : '?') + 'crumb=' + encodeURIComponent(crumb.trim()) : target;
+    const resp = await fetch(finalUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Accept': 'application/json, */*',
+        'Referer': 'https://finance.yahoo.com',
+        'Origin': 'https://finance.yahoo.com',
+      },
+    });
+    const body = await resp.text();
+    return new Response(body, {
+      status: resp.status,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    });
+  }
+};</textarea>
+              <button onclick="(()=>{const t=this.previousElementSibling;t.select();document.execCommand('copy');toast('Worker code copied!','success');})()" style="position:absolute;top:6px;right:6px;background:var(--accent);color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;">Copy</button>
+            </div>
             <input id="s-cf-worker" type="text" style="width:100%;" placeholder="https://options-proxy.yourname.workers.dev">
           </div>
           <button class="btn btn-blue" onclick="app.saveCFWorker()">Save &amp; Test Worker</button>
@@ -2023,13 +2056,89 @@ const app = {
     if (quoteRes) Object.assign(S.quotes, quoteRes);
     if (!chain) {
       const isTSX = TSX.isCanadian(sym);
-      container.innerHTML = `<div class="loading-block" style="flex-direction:column;gap:10px;">
-        <span style="color:var(--red);font-weight:600;">⚠ Could not load options chain for ${sym}</span>
-        <div style="font-size:11px;color:var(--muted);line-height:1.7;max-width:520px;text-align:left;">
-          ${isTSX ? `<div style="color:var(--yellow);margin-bottom:8px;">📋 <strong style="color:var(--text);">TSX Note:</strong> Options on TSX stocks trade at the <strong style="color:var(--text);">Montréal Exchange (MX)</strong> and are less liquid than US options. Many TSX names have no listed options. Yahoo Finance and Market Data App have limited TSX option chain coverage on free tiers.</div>` : ''}
-          Configure your Cloudflare Worker URL or Market Data App token in ⚙ Settings to enable options chains.
-          ${isTSX ? '<br>For TSX options, the Cloudflare Worker → Yahoo Finance path gives the best results.' : ''}
+      const workerCode = `// OptionsDesk Cloudflare Worker — options proxy
+// Deploy at: https://workers.cloudflare.com (free account, no credit card)
+// 1. Go to workers.cloudflare.com → Create Worker → paste this code → Deploy
+// 2. Copy your worker URL (e.g. https://options-proxy.yourname.workers.dev)
+// 3. Paste it into OptionsDesk → Settings → Cloudflare Worker URL
+
+export default {
+  async fetch(request) {
+    const url = new URL(request.url);
+    const target = url.searchParams.get('url');
+    if (!target) return new Response('Missing url param', { status: 400 });
+    // Fetch Yahoo crumb first
+    const crumbResp = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
+      headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': '*/*', 'Referer': 'https://finance.yahoo.com' },
+      credentials: 'include',
+    });
+    const crumb = await crumbResp.text();
+    const finalUrl = crumb && !crumb.includes('<!') ? target + (target.includes('?') ? '&' : '?') + 'crumb=' + encodeURIComponent(crumb.trim()) : target;
+    const resp = await fetch(finalUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Accept': 'application/json, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://finance.yahoo.com',
+        'Origin': 'https://finance.yahoo.com',
+      },
+    });
+    const body = await resp.text();
+    return new Response(body, {
+      status: resp.status,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      },
+    });
+  }
+};`;
+      container.innerHTML = `<div style="max-width:680px;margin:0 auto;padding:8px;">
+        <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:8px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:18px;">⚠</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--red);">Options chain unavailable for ${sym}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px;">Yahoo Finance options require a Cloudflare Worker proxy to bypass browser CORS restrictions. This is a free 2-minute setup.</div>
+          </div>
         </div>
+        ${isTSX ? `<div style="background:rgba(251,146,60,0.08);border:1px solid rgba(251,146,60,0.2);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--muted);">
+          <strong style="color:var(--orange);">📋 TSX Note:</strong> Options on TSX stocks trade at the <strong style="color:var(--text);">Montréal Exchange (MX)</strong>. Many TSX names have listed options (TD, RY, BNS, BMO, CM, ENB, CNQ, SU) — once the Worker is deployed, they load just like US options.
+        </div>` : ''}
+        <div class="card card-sm" style="margin-bottom:14px;">
+          <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;">🚀 3-step setup (free, ~2 minutes)</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <div style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px;">1</div>
+              <div>
+                <div style="font-size:11px;font-weight:600;color:var(--text);">Create a free Cloudflare account</div>
+                <a href="https://workers.cloudflare.com" target="_blank" style="font-size:10px;color:var(--accent2);">workers.cloudflare.com</a>
+                <span style="font-size:10px;color:var(--muted);"> → Sign up → Dashboard → Workers &amp; Pages → Create</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <div style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px;">2</div>
+              <div style="flex:1;">
+                <div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:6px;">Paste this worker code → Deploy</div>
+                <div style="position:relative;">
+                  <textarea id="worker-code-box" readonly style="width:100%;height:140px;font-family:var(--font-mono);font-size:10px;background:#0a0f1a;border:1px solid var(--border);border-radius:4px;padding:8px;color:var(--muted);resize:none;line-height:1.5;">${workerCode.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>
+                  <button onclick="(()=>{const t=document.getElementById('worker-code-box');t.select();document.execCommand('copy');toast('Worker code copied!','success');})()" style="position:absolute;top:6px;right:6px;background:var(--accent);color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;">Copy</button>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <div style="background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px;">3</div>
+              <div style="flex:1;">
+                <div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:6px;">Paste your Worker URL into Settings</div>
+                <div style="display:flex;gap:6px;">
+                  <input id="inline-worker-url" type="text" placeholder="https://options-proxy.yourname.workers.dev" style="flex:1;font-size:11px;">
+                  <button onclick="(()=>{const v=document.getElementById('inline-worker-url').value.trim();if(!v){toast('Enter your worker URL first','warn');return;}if(document.getElementById('s-cf-worker'))document.getElementById('s-cf-worker').value=v;app.saveCFWorker().then(()=>app.loadOptionsChain());})()" class="btn btn-blue btn-sm">Save &amp; Load</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;">The Cloudflare free tier allows 100,000 requests/day — more than enough for daily research.</div>
       </div>`;
       return;
     }
