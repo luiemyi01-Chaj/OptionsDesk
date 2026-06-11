@@ -2174,7 +2174,13 @@ const app = {
         isTSX ? `<div style="font-size:10px;color:var(--muted);align-self:center;">MX options only — lower liquidity expected</div>` : '',
       ].join('');
     }
-    this.renderOptionsChain();
+    // FIX: For TSX stocks Yahoo returns empty options[] on the initial no-date call.
+    // Always re-fetch with the first expiry date so calls/puts are populated.
+    if (S.curOptExp) {
+      await this.loadOptionsForExpiry();
+    } else {
+      this.renderOptionsChain();
+    }
   },
 
   async loadOptionsForExpiry() {
